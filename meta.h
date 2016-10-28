@@ -2,6 +2,7 @@
 #define __META_H__
 
 #include <time.h>
+#include <stdint.h>
 
 typedef struct _Meta {
 
@@ -20,8 +21,8 @@ typedef struct _Meta {
 
 } Meta;
 
-Meta *create_meta(std::string cid,
-                  std::string sid,
+Meta *create_meta(char *cid,
+                  char *sid,
                   char *content,
                   uint32_t initial_seq,
                   time_t ttl);
