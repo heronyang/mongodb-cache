@@ -4,8 +4,19 @@
 
 int main(int argc, char *argv[]) {
 
+    // init
+    init();
+
     // create a new meta
-    Meta *meta = create_meta("cidcidcid", "sidsidsid", "contentishere", 1, 15);
+    // NOTE: cid length should >= 24
+    char cid[]              = "123456789012345678901234";
+    char sid[]              = "432143214321423143214321";
+    uint8_t content[]       = "\xaa\xbb\xcc\xdd";
+    uint64_t len            = 4;
+    uint32_t initial_seq    = 15;
+    time_t ttl              = 0;
+
+    Meta *meta = create_meta(cid, sid, content, len, initial_seq, ttl);
 
     // put into the cache
     if(put(meta) < 0) {
@@ -13,12 +24,16 @@ int main(int argc, char *argv[]) {
     }
 
     // get it out of the cache
-    Meta *meta_retrieved = get("cidcidcid");
+    Meta *meta_retrieved = get(cid);
     if(meta_retrieved == NULL) {
         printf("Can't find the meta while retrieving.\n");
     } else {
-        printf("Found meta with content: %s\n", meta->content);
+        printf("Found meta with sid: %s\n", meta_retrieved->sid);
     }
 
+    // deinit
+    deinit();
+
     return 0;
+
 }

@@ -1,7 +1,8 @@
 .PHONY: clean
 
 CC 		= gcc
-CFLAGS 	= -Wall
+CFLAGS += `pkg-config --cflags libmongoc-1.0` -LLIBDIR -Wall
+LDFLAGS += `pkg-config --libs libmongoc-1.0`
 SOURCES = cache.c meta.c mcache.c
 OBJ 	= $(SOURCES:.c=.o)
 TARGET 	= mcache
@@ -15,4 +16,4 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -c $< $(LDFLAGS)
 
 clean:
-	-rm $(TARGET) $(OBJ)
+	-rm -f $(TARGET) *.o
