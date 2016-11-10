@@ -34,6 +34,9 @@ int main(int argc, char *argv[]) {
     // deinit
     deinit();
 
+    free_meta(meta);
+    free_meta(meta_retrieved);
+
     return 0;
 
 }

@@ -1,8 +1,11 @@
 #include <bson.h>
 #include <bcon.h>
 #include <mongoc.h>
+#include <stdbool.h>
 
 #include "cache.h"
+
+bool isValidChecksum(Meta *meta);
 
 /*
  * MongoDB C Driver API: http://mongoc.org/libmongoc/1.2.2/index.html#api-reference
@@ -114,9 +117,12 @@ Meta *bson2meta(const bson_t *doc) {
 
 }
 
-int put(Meta *meta) {
+bool put(Meta *meta) {
 
-    // FIXME: checksum before insertion
+    if(!isValidChecksum(meta)) {
+        printf("Invalid meta with wrong checksum\n");
+        return false;
+    }
 
     bson_t *doc;
     bson_oid_t oid;
@@ -143,11 +149,15 @@ int put(Meta *meta) {
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error)) {
         bson_destroy (doc);
         printf("%s\n", error.message);
-        return -1;
+        return false;
     }
 
     bson_destroy (doc);
 
-    return 1;
+    return true;
 
+}
+
+bool isValidChecksum(Meta *meta) {
+    return true;
 }

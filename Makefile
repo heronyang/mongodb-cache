@@ -1,15 +1,22 @@
-.PHONY: clean
+.PHONY: clean test
 
-CC 		= gcc
-CFLAGS += `pkg-config --cflags libmongoc-1.0` -LLIBDIR -Wall
-LDFLAGS += `pkg-config --libs libmongoc-1.0`
-SOURCES = cache.c meta.c mcache.c
-OBJ 	= $(SOURCES:.c=.o)
-TARGET 	= mcache
+CC 			= gcc
+CFLAGS 		+= `pkg-config --cflags libmongoc-1.0` -LLIBDIR -Wall
+LDFLAGS 	+= `pkg-config --libs libmongoc-1.0`
+SOURCES 	= mcache.c cache.c meta.c
+OBJ 		= $(SOURCES:.c=.o)
+TARGET 		= mcache
 
-all: $(TARGET)
+TEST_SOURCE = mcache-test.c cache.c meta.c
+TEST_TARGET = mcache-test
+TEST_OBJ	= $(TEST_SOURCE:.c=.o)
+
+all: $(TARGET) $(TEST_TARGET)
 
 $(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(TEST_TARGET): $(TEST_OBJ)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 %.o: %.c

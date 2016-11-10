@@ -1,6 +1,7 @@
 #ifndef __CACHE_H__
 #define __CACHE_H__
 
+#include <stdbool.h>
 #include "meta.h"
 
 #define MONGODB_URL         "mongodb://localhost:27017" 
@@ -11,6 +12,6 @@ void init();
 void deinit();
 
 Meta *get(char *cid);
-int put(Meta *meta);
+bool put(Meta *meta);
 
 #endif
