@@ -12,16 +12,6 @@
 #define DEFAULT_CHUNCK_SIZE     (1024 * 1024)
 #define DEFAULT_THREAD          2
 
-/* Function Prototypes */
-
-void generate_random_string(char *s, int len);
-void print_succeed_failed_count();
-void print_time_duration(int begin_time, int end_time);
-
-int put_succeed = 0, put_failed = 0;    // should use array if multi-thread
-int *put_succeed_on_thread;
-int *put_failed_on_thread;
-
 /* Configuration */
 
 typedef struct {
@@ -33,7 +23,19 @@ typedef struct {
 typedef struct {
     int chunk_size;
     int put_amount_per_thread;
+    int tid;
 } Worker_Args;
+
+/* Function Prototypes */
+
+void generate_random_string(char *s, int len);
+void print_succeed_failed_count();
+void print_time_duration(int begin_time, int end_time);
+void print_config(Config *config);
+
+int put_succeed = 0, put_failed = 0;    // should use array if multi-thread
+int *put_succeed_on_thread;
+int *put_failed_on_thread;
 
 static void usage(char *argv[]) {
 	printf("Usage: %s [OPTIONS]\n", argv[0]);
@@ -59,7 +61,7 @@ bool parseArgv(int argc, char *argv[], Config *config) {
 
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "p:t:h", options, &option_index);
+		c = getopt_long(argc, argv, "p:t:s:h", options, &option_index);
 		if(c == -1) {
 			break;
         }
@@ -131,25 +133,31 @@ void generate_random_string(char *s, int len) {
 
 }
 
-void put_one_meta(int chunk_size) {
+void put_one_meta(int chunk_size, int tid) {
 
     Meta *meta = generate_dummy_meta((uint64_t)chunk_size);
 
     if(put(meta)) {
-        // put_succeed_on_thread[tid] ++;
+        put_succeed_on_thread[tid] ++;
     } else {
-        // put_failed_on_thread[tid] ++;
-        printf("Failed\n");
+        put_failed_on_thread[tid] ++;
     }
 
     free_meta(meta);
 
 }
 
-void put_n_meta(int chunk_size, int n) {
+void put_n_meta(int chunk_size, int n, int tid) {
     while(n--) {
-        put_one_meta(chunk_size);
+        put_one_meta(chunk_size, tid);
     }
+}
+
+void print_config(Config *config) {
+    printf("[Config]\n");
+    printf("\tPut operations: %d (total)\n", config->put_amount);
+    printf("\tThread number: %d\n", config->thread_amount);
+    printf("\tChunk size: %d (bytes)\n", config->chunk_size);
 }
 
 void print_time_duration(int begin_time, int end_time) {
@@ -160,25 +168,20 @@ void print_time_duration(int begin_time, int end_time) {
 void print_succeed_failed_count(int thread_amount) {
     int i;
     for(i=0; i<thread_amount; i++) {
-        // printf("[Thread %d] Succeed: %d, Failed: %d", i, put_succeed_on_thread[i], put_failed_on_thread[i]);
+        printf("[Thread %d] Succeed: %d, Failed: %d\n", i, put_succeed_on_thread[i], put_failed_on_thread[i]);
     }
 }
 
 void *run_worker(void *worker_args) {
 
     Worker_Args *wa = worker_args;
-    put_n_meta(wa->chunk_size, wa->put_amount_per_thread);
+    put_n_meta(wa->chunk_size, wa->put_amount_per_thread, wa->tid);
 
     return NULL;
 
 }
 
 void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
-
-    // work arguments
-    Worker_Args *wa = malloc(sizeof(Worker_Args));
-    wa->chunk_size = chunk_size;
-    wa->put_amount_per_thread = put_amount / thread_amount;
 
     // result allocation for threads
     put_succeed_on_thread = calloc(thread_amount, sizeof(int));
@@ -189,7 +192,15 @@ void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
 
     int i;
     for(i=0; i<thread_amount; i++) {
+
+        // work arguments
+        Worker_Args *wa = malloc(sizeof(Worker_Args));
+        wa->chunk_size = chunk_size;
+        wa->put_amount_per_thread = put_amount / thread_amount;
+        wa->tid = i;
+
         pthread_create(&tids[i], NULL, run_worker, (void *)wa);
+
     }
 
     for(i=0; i<thread_amount; i++) {
@@ -207,14 +218,13 @@ int main(int argc, char *argv[]) {
     if(!parseArgv(argc, argv, config)) {
         return 1;
     }
+    print_config(config);
 
     //
     srand(time(NULL));
     setbuf(stdout, NULL);
 
-    // init
     init();
-
     clock_t begin_time = clock();
 
     run_on_threads(config->chunk_size,
@@ -223,8 +233,6 @@ int main(int argc, char *argv[]) {
 
     // end
     clock_t end_time = clock();
-
-    // deinit
     deinit();
 
     //
