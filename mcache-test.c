@@ -3,13 +3,14 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <string.h>
+#include <pthread.h>
 #include "meta.h"
 #include "cache.h"
 
 #define CID_LENGTH              25
-#define DEFAULT_PUT_AMOUNT      500
+#define DEFAULT_PUT_AMOUNT      20
 #define DEFAULT_CHUNCK_SIZE     (1024 * 1024)
-#define DEFAULT_THREAD          5
+#define DEFAULT_THREAD          2
 
 /* Function Prototypes */
 
@@ -18,6 +19,8 @@ void print_succeed_failed_count();
 void print_time_duration(int begin_time, int end_time);
 
 int put_succeed = 0, put_failed = 0;    // should use array if multi-thread
+int *put_succeed_on_thread;
+int *put_failed_on_thread;
 
 /* Configuration */
 
@@ -27,9 +30,14 @@ typedef struct {
     int chunk_size;
 } Config;
 
+typedef struct {
+    int chunk_size;
+    int put_amount_per_thread;
+} Worker_Args;
+
 static void usage(char *argv[]) {
 	printf("Usage: %s [OPTIONS]\n", argv[0]);
-	printf("  -p            Amount of put operations per thread worker.\n");
+	printf("  -p            Amount of put operations in total.\n");
 	printf("  -t            Number of threads.\n");
 	printf("  -s            Chunk size.\n");
 	printf("  -h            Displays this help.\n");
@@ -124,22 +132,24 @@ void generate_random_string(char *s, int len) {
 }
 
 void put_one_meta(int chunk_size) {
+
     Meta *meta = generate_dummy_meta((uint64_t)chunk_size);
-    if(put(meta) < 0) {
-        put_failed ++;
+
+    if(put(meta)) {
+        // put_succeed_on_thread[tid] ++;
     } else {
-        put_succeed ++;
+        // put_failed_on_thread[tid] ++;
+        printf("Failed\n");
     }
+
     free_meta(meta);
+
 }
 
-void put_n_meta(int check_size, int n) {
+void put_n_meta(int chunk_size, int n) {
     while(n--) {
-        put_one_meta(check_size);
-        printf("\r");
-        print_succeed_failed_count();
+        put_one_meta(chunk_size);
     }
-    printf("\n");
 }
 
 void print_time_duration(int begin_time, int end_time) {
@@ -147,8 +157,46 @@ void print_time_duration(int begin_time, int end_time) {
     printf("Time spent: %lf seconds\n", time_spent);
 }
 
-void print_succeed_failed_count() {
-    printf("Succeed: %d, Failed: %d", put_succeed, put_failed);
+void print_succeed_failed_count(int thread_amount) {
+    int i;
+    for(i=0; i<thread_amount; i++) {
+        // printf("[Thread %d] Succeed: %d, Failed: %d", i, put_succeed_on_thread[i], put_failed_on_thread[i]);
+    }
+}
+
+void *run_worker(void *worker_args) {
+
+    Worker_Args *wa = worker_args;
+    put_n_meta(wa->chunk_size, wa->put_amount_per_thread);
+
+    return NULL;
+
+}
+
+void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
+
+    // work arguments
+    Worker_Args *wa = malloc(sizeof(Worker_Args));
+    wa->chunk_size = chunk_size;
+    wa->put_amount_per_thread = put_amount / thread_amount;
+
+    // result allocation for threads
+    put_succeed_on_thread = calloc(thread_amount, sizeof(int));
+    put_failed_on_thread = calloc(thread_amount, sizeof(int));
+
+    // thread id pool
+    pthread_t *tids = malloc(thread_amount * sizeof(pthread_t));
+
+    int i;
+    for(i=0; i<thread_amount; i++) {
+        pthread_create(&tids[i], NULL, run_worker, (void *)wa);
+    }
+
+    for(i=0; i<thread_amount; i++) {
+        pthread_join(tids[i], NULL);
+        printf("Thread %d: Done\n", i);
+    }
+
 }
 
 int main(int argc, char *argv[]) {
@@ -164,13 +212,14 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
     setbuf(stdout, NULL);
 
-    // start
+    // init
     init();
 
     clock_t begin_time = clock();
 
-    // put one
-    put_n_meta(config->chunk_size, config->put_amount);
+    run_on_threads(config->chunk_size,
+                   config->put_amount,
+                   config->thread_amount);
 
     // end
     clock_t end_time = clock();
@@ -180,6 +229,7 @@ int main(int argc, char *argv[]) {
 
     //
     print_time_duration(begin_time, end_time);
+    print_succeed_failed_count(config->thread_amount);
 
     return 0;
 

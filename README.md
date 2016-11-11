@@ -23,7 +23,7 @@ A cache implementation using MongoDB in C
 
 ```
 Usage: ./mcache-test [OPTIONS]
-  -p            Amount of put operations per thread worker.
+  -p            Amount of put operations in total.
   -t            Number of threads.
   -s            Chunk size (byte).
   -h            Displays this help.
@@ -34,8 +34,15 @@ Usage: ./mcache-test [OPTIONS]
 |        | Thread | Chunk size | # Put Operations | Execution Time |
 |--------|--------|------------|------------------|--------------- |
 | Test 1 |      1 |       1 MB |              500 |  15.951422 sec |
+| Test 2 |      1 |       1 MB |              200 |  11.564633 sec |
+| Test 2 |      2 |       1 MB |              200 |  10.297076 sec |
 
 ## Issue
 
 - mongod crashes after around 800 put operations
 - haven't implemented any chunk discard policy
+
+## Todo
+
+- check correctness on multithread cases
+- implement basic drop policy

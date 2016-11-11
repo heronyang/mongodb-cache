@@ -2,7 +2,7 @@
 
 CC 			= gcc
 CFLAGS 		+= `pkg-config --cflags libmongoc-1.0` -LLIBDIR -Wall
-LDFLAGS 	+= `pkg-config --libs libmongoc-1.0`
+LDFLAGS 	+= `pkg-config --libs libmongoc-1.0` -pthread
 SOURCES 	= mcache.c cache.c meta.c
 OBJ 		= $(SOURCES:.c=.o)
 TARGET 		= mcache
