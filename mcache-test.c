@@ -6,11 +6,16 @@
 #include "meta.h"
 #include "cache.h"
 
-#define CID_LENGTH 30
+#define CID_LENGTH              25
+#define DEFAULT_PUT_AMOUNT      500
+#define DEFAULT_CHUNCK_SIZE     (1024 * 1024)
+#define DEFAULT_THREAD          5
 
 /* Function Prototypes */
 
 void generate_random_string(char *s, int len);
+void print_succeed_failed_count();
+void print_time_duration(int begin_time, int end_time);
 
 int put_succeed = 0, put_failed = 0;    // should use array if multi-thread
 
@@ -79,9 +84,11 @@ bool parseArgv(int argc, char *argv[], Config *config) {
 /* Generate test meta */
 
 void fill_default_config(Config *config) {
-    config->put_amount = 200;
-    config->thread_amount = 5;
-    config->chunk_size = 1024 * 1024; // 1 MB
+
+    config->put_amount = DEFAULT_PUT_AMOUNT;
+    config->thread_amount = DEFAULT_THREAD;
+    config->chunk_size = DEFAULT_CHUNCK_SIZE;
+
 }
 
 Meta *generate_dummy_meta(uint64_t len) {
@@ -129,12 +136,19 @@ void put_one_meta(int chunk_size) {
 void put_n_meta(int check_size, int n) {
     while(n--) {
         put_one_meta(check_size);
+        printf("\r");
+        print_succeed_failed_count();
     }
+    printf("\n");
 }
 
-void print_result(int begin_time, int end_time) {
+void print_time_duration(int begin_time, int end_time) {
     double time_spent = (double)(end_time - begin_time) / CLOCKS_PER_SEC;
     printf("Time spent: %lf seconds\n", time_spent);
+}
+
+void print_succeed_failed_count() {
+    printf("Succeed: %d, Failed: %d", put_succeed, put_failed);
 }
 
 int main(int argc, char *argv[]) {
@@ -148,6 +162,7 @@ int main(int argc, char *argv[]) {
 
     //
     srand(time(NULL));
+    setbuf(stdout, NULL);
 
     // start
     init();
@@ -163,7 +178,8 @@ int main(int argc, char *argv[]) {
     // deinit
     deinit();
 
-    print_result(begin_time, end_time);
+    //
+    print_time_duration(begin_time, end_time);
 
     return 0;
 

@@ -3,7 +3,7 @@
 #include <string.h>
 #include "meta.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 Meta *create_meta(char *cid,
                   char *sid,
