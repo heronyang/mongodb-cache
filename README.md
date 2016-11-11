@@ -36,7 +36,6 @@ Usage: ./mcache-test [OPTIONS]
 | Test 1 |      1 |       1 MB |              500 |  15.951422 sec |
 | Test 2 |      1 |       1 MB |              200 |  11.564633 sec |
 | Test 3 |      2 |       1 MB |              200 |  10.297076 sec |
-| Test 4 |      5 |       1 MB |             2000 |  10.297076 sec |
 
 ## Issue
 
