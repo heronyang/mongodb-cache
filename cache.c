@@ -17,7 +17,7 @@ mongoc_client_t      *client;
 mongoc_database_t    *database;
 mongoc_collection_t  *collection;
 
-Meta *bson2meta(const bson_t *doc);
+Meta *bson2meta(const bson_t *doc, const char *cid);
 
 void init() {
 
@@ -58,7 +58,7 @@ Meta *get(char *cid) {
         return NULL;
     }
 
-    Meta *meta = bson2meta(doc);
+    Meta *meta = bson2meta(doc, cid);
 
     bson_destroy(query);
     mongoc_cursor_destroy(cursor);
@@ -67,7 +67,7 @@ Meta *get(char *cid) {
 
 }
 
-Meta *bson2meta(const bson_t *doc) {
+Meta *bson2meta(const bson_t *doc, const char *cid) {
 
     if(doc == NULL) {
         return NULL;
@@ -79,6 +79,10 @@ Meta *bson2meta(const bson_t *doc) {
     }
 
     Meta *meta = malloc(sizeof(Meta));
+
+    // cid
+    meta->cid = malloc(strlen(cid) + 1);
+    strcpy(meta->cid, cid);
 
     // sid
     bson_iter_find(&iter, "sid");

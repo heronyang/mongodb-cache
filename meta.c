@@ -1,6 +1,6 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "meta.h"
 
 #define DEBUG 1
@@ -50,6 +50,10 @@ Meta *create_meta(char *cid,
 }
 
 void free_meta(Meta *meta) {
+
+    if(meta == NULL) {
+        return;
+    }
 
     free(meta->cid);
     free(meta->sid);
