@@ -8,10 +8,10 @@
 #define MONGODB_DB          "cache"
 #define MONGODB_COLLECTION  "cache"
 
-void init();
-void deinit();
+void db_init();
+void db_deinit();
 
-Meta *get(char *cid);
-bool put(Meta *meta);
+Meta *db_get(char *cid);
+bool db_put(Meta *meta);
 
 #endif

@@ -19,7 +19,7 @@ mongoc_collection_t  *collection;
 
 Meta *bson2meta(const bson_t *doc, const char *cid);
 
-void init() {
+void db_init() {
 
     mongoc_init();
 
@@ -29,7 +29,7 @@ void init() {
 
 }
 
-void deinit() {
+void db_deinit() {
 
     mongoc_collection_destroy(collection);
     mongoc_database_destroy(database);
@@ -38,7 +38,7 @@ void deinit() {
 
 }
 
-Meta *get(char *cid) {
+Meta *db_get(char *cid) {
 
     mongoc_cursor_t *cursor;
     const bson_t *doc;
@@ -121,7 +121,7 @@ Meta *bson2meta(const bson_t *doc, const char *cid) {
 
 }
 
-bool put(Meta *meta) {
+bool db_put(Meta *meta) {
 
     if(!isValidChecksum(meta)) {
         printf("Invalid meta with wrong checksum\n");
