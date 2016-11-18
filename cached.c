@@ -35,6 +35,7 @@ void limited_worker_can_come_in() {
 }
 
 // TODO: remove this one and use real operations
+// FIXME: use at least 24 byte hex string as cid (> 24 * 4 bits)
 void put_one_dummy_cache_record() {
 
     char cid[]              = "123456789012345678901234";
