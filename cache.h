@@ -2,11 +2,14 @@
 #define __CACHE_H__
 
 #include <stdbool.h>
-#include "meta.h"
+#include <bson.h>
+#include <bcon.h>
+#include <mongoc.h>
+#include <stdbool.h>
 
-#define MONGODB_URL         "mongodb://localhost:27017" 
-#define MONGODB_DB          "cache"
-#define MONGODB_COLLECTION  "cache"
+#include "meta.h"
+#include "config.h"
+#include "wrapper.h"
 
 void db_init();
 void db_deinit();

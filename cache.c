@@ -1,44 +1,73 @@
-#include <bson.h>
-#include <bcon.h>
-#include <mongoc.h>
-#include <stdbool.h>
-
 #include "cache.h"
 
 bool isValidChecksum(Meta *meta);
 
 /*
- * MongoDB C Driver API: http://mongoc.org/libmongoc/1.2.2/index.html#api-reference
- * Bson: http://mongoc.org/libbson/1.4.2/
- *       https://github.com/mongodb/libbson/blob/ca2f3ad7548a25580312814ab54bf3e93a9b6a30/src/bson/bson.h
+ * Reference
+ *
+ * MongoDB C Driver API
+ * - http://mongoc.org/libmongoc/1.4.2/index.html#api-reference
+ * - https://raw.githubusercontent.com/mongodb/mongo-c-driver/master/tests/test-mongoc-client-pool.c
+ * Bson:
+ * - http://mongoc.org/libbson/1.4.2/
+ * - https://github.com/mongodb/libbson/blob/ca2f3ad7548a25580312814ab54bf3e93a9b6a30/src/bson/bson.h
+ *
  */
 
-mongoc_client_t      *client;
-mongoc_database_t    *database;
-mongoc_collection_t  *collection;
+static mongoc_uri_t *uri;
+static mongoc_client_pool_t *pool;
+
+typedef struct _Connection {
+    mongoc_client_t      *client;
+    mongoc_database_t    *database;
+    mongoc_collection_t  *collection;
+} Connection;
 
 Meta *bson2meta(const bson_t *doc, const char *cid);
 
 void db_init() {
 
     mongoc_init();
-
-    client = mongoc_client_new(MONGODB_URL);
-    database = mongoc_client_get_database(client, MONGODB_DB);
-    collection = mongoc_client_get_collection(client, MONGODB_DB, MONGODB_COLLECTION);
+    uri = mongoc_uri_new(MONGODB_URL);
+    pool = mongoc_client_pool_new(uri);
 
 }
 
 void db_deinit() {
 
-    mongoc_collection_destroy(collection);
-    mongoc_database_destroy(database);
-    mongoc_client_destroy(client);
+    mongoc_uri_destroy(uri);
+    mongoc_client_pool_destroy(pool);
     mongoc_cleanup();
 
 }
 
+Connection *retrive_connection() {
+
+    Connection *connection  = malloc_w(sizeof(Connection));
+
+    mongoc_client_t *client = mongoc_client_pool_pop(pool);
+    connection->client      = client;
+    connection->database    = mongoc_client_get_database(client, MONGODB_DB);
+    connection->collection  = mongoc_client_get_collection(client, MONGODB_DB, MONGODB_COLLECTION);
+
+    return connection;
+
+}
+
+void release_connection(Connection *connection) {
+
+    mongoc_collection_destroy(connection->collection);
+    mongoc_database_destroy(connection->database);
+    mongoc_client_pool_push(pool, connection->client);
+
+    free(connection);
+
+}
+
 Meta *db_get(char *cid) {
+
+    Connection *connection = retrive_connection();
+    mongoc_collection_t *collection = connection->collection;
 
     mongoc_cursor_t *cursor;
     const bson_t *doc;
@@ -55,6 +84,7 @@ Meta *db_get(char *cid) {
     if(!mongoc_cursor_next(cursor, &doc)) {
         bson_destroy(query);
         mongoc_cursor_destroy(cursor);
+        release_connection(connection);
         return NULL;
     }
 
@@ -62,6 +92,7 @@ Meta *db_get(char *cid) {
 
     bson_destroy(query);
     mongoc_cursor_destroy(cursor);
+    release_connection(connection);
 
     return meta;
 
@@ -128,6 +159,9 @@ bool db_put(Meta *meta) {
         return false;
     }
 
+    Connection *connection = retrive_connection();
+    mongoc_collection_t *collection = connection->collection;
+
     bson_t *doc;
     bson_oid_t oid;
     bson_error_t error;
@@ -152,12 +186,14 @@ bool db_put(Meta *meta) {
 
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error)) {
         bson_destroy (doc);
+        release_connection(connection);
         printf("%s\n", error.message);
         return false;
     }
 
     bson_destroy (doc);
 
+    release_connection(connection);
     return true;
 
 }

@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "wrapper.h"
+#include "meta.h"
 #include "cache.h"
 
 static volatile bool running = true;
@@ -33,6 +34,30 @@ void limited_worker_can_come_in() {
     print_current_time();
 }
 
+// TODO: remove this one and use real operations
+void put_one_dummy_cache_record() {
+
+    char cid[]              = "123456789012345678901234";
+    char sid[]              = "432143214321423143214321";
+    uint8_t content[]       = "\xaa\xbb\xcc\xdd";
+    uint64_t len            = 4;
+    uint32_t initial_seq    = 15;
+    time_t ttl              = 0;
+
+    Meta *meta = create_meta(cid, sid, content, len, initial_seq, ttl);
+
+    // put into the cache
+    if(db_put(meta) < 0) {
+        printf("Error found in putting meta into the cache.\n");
+    }
+
+    printf("successfully inserted one data\n");
+
+    // release from heap
+    free_meta(meta);
+
+}
+
 /*
  * Entry function run by each worker
  */
@@ -45,7 +70,7 @@ void *worker(void *connfd_p) {
 
     // run job
     sem_wait_w(&sem);
-    limited_worker_can_come_in();
+    put_one_dummy_cache_record();
     sem_post_w(&sem);
 
     // close
@@ -65,7 +90,7 @@ void init() {
     signal(SIGINT, signal_handler);
 
     sem_init_w(&sem, 0, MAX_CONNECTION);
-    // db_init();
+    db_init();
 }
 
 void deinit() {
@@ -73,7 +98,7 @@ void deinit() {
     printf("shutting down...");
 
     sem_destroy(&sem);
-    // db_deinit();
+    db_deinit();
 }
 
 int main(int argc, char **argv) {
