@@ -44,5 +44,7 @@ Usage: ./mcache-test [OPTIONS]
 
 ## Todo
 
-- check correctness on multithread cases
-- implement basic drop policy
+- create operation object (action, meta)
+- pass operations via socket, handled by cached worker
+- add created time / accessed time
+- implement garbage collector thread
