@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "meta.h"
 
 #define DEBUG 0
@@ -61,6 +58,14 @@ void free_meta(Meta *meta) {
 
     free(meta);
 
+}
+
+Meta_Encoded *encode_meta(Meta *meta) {
+    return NULL;
+}
+
+Meta *decode_meta(Meta_Encoded *meta_e) {
+    return NULL;
 }
 
 void print_meta(Meta *meta) {

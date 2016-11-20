@@ -152,7 +152,7 @@ Meta *bson2meta(const bson_t *doc, const char *cid) {
 
 }
 
-bool db_put(Meta *meta) {
+bool db_post(Meta *meta) {
 
     if(!isValidChecksum(meta)) {
         printf("Invalid meta with wrong checksum\n");

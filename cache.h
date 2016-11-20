@@ -15,6 +15,6 @@ void db_init();
 void db_deinit();
 
 Meta *db_get(char *cid);
-bool db_put(Meta *meta);
+bool db_post(Meta *meta);
 
 #endif
