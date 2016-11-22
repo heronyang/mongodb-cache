@@ -1,0 +1,14 @@
+message Meta {
+
+    required string cid = 1;
+    required string sid = 2;
+
+    required bytes content = 3;
+
+    required uint32 len = 4;
+    required uint32 initial_seq = 5;
+
+    required int64 created = 6;
+    required int64 accessed = 7;
+
+}
