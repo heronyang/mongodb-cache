@@ -9,3 +9,9 @@ cd mongo-c-driver-1.4.2
 make
 sudo make install
 cd ..
+
+## protobuf-c
+git clone https://github.com/protobuf-c/protobuf-c.git
+cd protobuf-c
+./autogen.sh && ./configure && make && make install
+cd ..
