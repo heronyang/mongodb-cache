@@ -19,7 +19,7 @@ typedef struct _Meta {
     uint32_t len;
     uint32_t initial_seq;
 
-    time_t ttl;
+    uint32_t ttl;   // seconds
 
     time_t created;
     time_t accessed;
