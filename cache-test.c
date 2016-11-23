@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <time.h>
-#include "cache.c"
+#include "cache.h"
+
+#include "proto/meta.pb-c.h"
+#include "proto/operation.pb-c.h"
 
 void db_post_test() {
 
@@ -19,10 +22,22 @@ void db_post_test() {
 
     meta.initial_seq = 200;
 
+    meta.ttl = 300;
     meta.created_time = now;
     meta.accessed_time = now;
 
-    db_post(meta);
+    db_post(&meta);
+
+}
+
+void db_get_test() {
+
+    Meta *meta = db_get("83e9ce27e198605616ef247aa5aeb411dcac065c");
+
+    printf("sid = %.*s\n", SHA1_LENGTH, meta->sid);
+
+    meta__free_unpacked(meta, NULL);
+    return;
 
 }
 
@@ -30,8 +45,8 @@ int main() {
 
     db_init();
 
-    // db_post();
-    // db_get();
+    db_post_test();
+    db_get_test();
 
     db_deinit();
 

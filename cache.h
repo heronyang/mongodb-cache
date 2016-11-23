@@ -7,14 +7,16 @@
 #include <mongoc.h>
 #include <stdbool.h>
 
-#include "meta.h"
+#include "proto/meta.pb-c.h"
+#include "proto/operation.pb-c.h"
+
 #include "config.h"
 #include "wrapper.h"
 
 void db_init();
 void db_deinit();
 
-Meta *db_get(char *cid);
+Meta *db_get(const char *cid);
 bool db_post(Meta *meta);
 
 #endif

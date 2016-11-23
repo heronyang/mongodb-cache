@@ -13,6 +13,6 @@
 #define MONGODB_DB          "cache"
 #define MONGODB_COLLECTION  "cache"
 
-#define CID_LENGTH          40  // SHA1: 160 bits = 40 hex char
+#define SHA1_LENGTH         40  // SHA1: 160 bits = 40 hex char
 
 #endif

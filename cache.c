@@ -23,6 +23,7 @@ typedef struct _Connection {
     mongoc_collection_t  *collection;
 } Connection;
 
+void bson_init_from_meta(bson_t *doc, Meta *meta);
 Meta *bson2meta(const bson_t *doc, const char *cid);
 
 void db_init() {
@@ -64,16 +65,19 @@ void release_connection(Connection *connection) {
 
 }
 
-Meta *db_get(char *cid) {
+Meta *db_get(const char *cid) {
 
+    // connect to database
     Connection *connection = retrive_connection();
     mongoc_collection_t *collection = connection->collection;
 
+    // variable setup
     mongoc_cursor_t *cursor;
     const bson_t *doc;
     bson_t *query;
     bson_oid_t oid;
 
+    // query
     query = bson_new();
     bson_oid_init_from_string (&oid, cid);
     BSON_APPEND_OID(query, "_id", &oid);
@@ -88,6 +92,7 @@ Meta *db_get(char *cid) {
         return NULL;
     }
 
+    // parse bson return back to meta
     Meta *meta = bson2meta(doc, cid);
 
     bson_destroy(query);
@@ -109,50 +114,57 @@ Meta *bson2meta(const bson_t *doc, const char *cid) {
         return NULL;
     }
 
-    Meta *meta = malloc(sizeof(Meta));
+    Meta *meta = malloc_w(sizeof(Meta));
+    meta__init(meta);
 
     // cid
-    meta->cid = malloc(strlen(cid) + 1);
-    strcpy(meta->cid, cid);
+    meta->cid = malloc_w(SHA1_LENGTH);
+    memcpy(meta->cid, cid, SHA1_LENGTH);
 
     // sid
     bson_iter_find(&iter, "sid");
     const char *sid = bson_iter_utf8(&iter, 0);
-    meta->sid = malloc(strlen(sid) + 1);
-    strcpy(meta->sid, sid);
-
-    // content
-    bson_subtype_t subtype;
-    uint32_t len;
-    const uint8_t *binary = meta->content;
-    bson_iter_find(&iter, "content");
-    bson_iter_binary(&iter, &subtype, &len, &binary);
+    meta->sid = malloc_w(SHA1_LENGTH);
+    memcpy(meta->sid, sid, SHA1_LENGTH);
 
     // len
     bson_iter_find(&iter, "len");
-    meta->len = bson_iter_int64(&iter);
+    uint32_t len  = bson_iter_int32(&iter);
+
+    // content
+    bson_subtype_t subtype;
+    meta->content.data = malloc_w(len);
+    const uint8_t *content = meta->content.data;
+    uint32_t len_saved;
+    bson_iter_find(&iter, "content");
+    bson_iter_binary(&iter, &subtype, &len_saved, &content);
+    
+    if(len != len_saved) {
+        printf("Error found in validating content length\n");
+        return NULL;
+    }
 
     // initial_seq
     bson_iter_find(&iter, "initial_seq");
-    meta->initial_seq = bson_iter_int64(&iter);
+    meta->initial_seq = bson_iter_int32(&iter);
 
     // ttl
     bson_iter_find(&iter, "ttl");
-    meta->ttl = bson_iter_time_t(&iter);
+    meta->ttl = bson_iter_int32(&iter);
 
-    // created
-    bson_iter_find(&iter, "created");
-    meta->created = bson_iter_time_t(&iter);
+    // created_time
+    bson_iter_find(&iter, "created_time");
+    meta->created_time = bson_iter_time_t(&iter);
 
-    // accessed
-    bson_iter_find(&iter, "accessed");
-    meta->accessed = bson_iter_time_t(&iter);
+    // accessed_time
+    bson_iter_find(&iter, "accessed_time");
+    meta->accessed_time = bson_iter_time_t(&iter);
 
     return meta;
 
 }
 
-bool db_post(Meta meta) {
+bool db_post(Meta *meta) {
 
     if(!isValidChecksum(meta)) {
         printf("Invalid meta with wrong checksum\n");
@@ -163,26 +175,10 @@ bool db_post(Meta meta) {
     mongoc_collection_t *collection = connection->collection;
 
     bson_t *doc;
-    bson_oid_t oid;
-    bson_error_t error;
-
     doc = bson_new();
-    bson_init(doc);
+    bson_init_from_meta(doc, meta);
 
-    // append data
-
-    bson_oid_init_from_string (&oid, meta.cid);
-    BSON_APPEND_OID (doc, "_id", &oid);
-    BSON_APPEND_UTF8(doc, "sid", meta.sid);
-
-    BSON_APPEND_BINARY(doc, "content", BSON_SUBTYPE_BINARY,
-            meta.content.data, meta.content.len);
-    BSON_APPEND_INT32(doc, "initial_seq", meta.initial_seq);
-
-    BSON_APPEND_INT32(doc, "ttl", meta.ttl);
-    BSON_APPEND_INT64(doc, "created_time", meta.created_time);
-    BSON_APPEND_INT64(doc, "accessed_time", meta.accessed_time);
-
+    bson_error_t error;
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error)) {
         bson_destroy (doc);
         release_connection(connection);
@@ -197,7 +193,28 @@ bool db_post(Meta meta) {
 
 }
 
-bool isValidChecksum(Meta meta) {
+void bson_init_from_meta(bson_t *doc, Meta *meta) {
+
+    bson_oid_t oid;
+
+    bson_init(doc);
+
+    bson_oid_init_from_string (&oid, meta->cid);
+    BSON_APPEND_OID (doc, "_id", &oid);
+    BSON_APPEND_UTF8(doc, "sid", meta->sid);
+
+    BSON_APPEND_INT32(doc, "len", meta->content.len);
+    BSON_APPEND_BINARY(doc, "content", BSON_SUBTYPE_BINARY,
+            meta->content.data, meta->content.len);
+    BSON_APPEND_INT32(doc, "initial_seq", meta->initial_seq);
+
+    BSON_APPEND_INT32(doc, "ttl", meta->ttl);
+    BSON_APPEND_TIME_T(doc, "created_time", meta->created_time);
+    BSON_APPEND_TIME_T(doc, "accessed_time", meta->accessed_time);
+
+}
+
+bool isValidChecksum(Meta *meta) {
     // TODO
     return true;
 }

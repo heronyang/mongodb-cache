@@ -17,31 +17,6 @@ void request_failed(int connfd, char *message);
 
 /******************** Worker ********************/
 
-// TODO: remove this one and use real operations
-// FIXME: use at least 24 byte hex string as cid (> 24 * 4 bits)
-void put_one_dummy_cache_record() {
-
-    char cid[]              = "123456789012345678901234";
-    char sid[]              = "432143214321423143214321";
-    uint8_t content[]       = "\xaa\xbb\xcc\xdd";
-    uint64_t len            = 4;
-    uint32_t initial_seq    = 15;
-    time_t ttl              = 0;
-
-    Meta *meta = create_meta(cid, sid, content, len, initial_seq, ttl);
-
-    // put into the cache
-    if(db_post(meta) < 0) {
-        printf("Error found in putting meta into the cache.\n");
-    }
-
-    printf("successfully inserted one data\n");
-
-    // release from heap
-    free_meta(meta);
-
-}
-
 void operation_handler(int connfd) {
 
     int n;

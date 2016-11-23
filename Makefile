@@ -1,4 +1,4 @@
-.PHONY: proto test clean
+.PHONY: proto test clean cache-test
 
 CC 				= gcc
 
@@ -8,8 +8,8 @@ PB_LDFLAGS		= `pkg-config --libs 'libprotobuf-c >= 1.0.0'` -lprotobuf-c
 MONGOD_CLFLAGS	= `pkg-config --cflags libmongoc-1.0` -LLIBDIR
 MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
 
-CFLAGS 			+= $(MONGOD_CLFLAGS) -Wall
-LDFLAGS 		+= $(MONGOD_LDFLAGS) -pthread
+CFLAGS 			+= $(PB_CFLAGS) $(MONGOD_CLFLAGS) -Wall
+LDFLAGS 		+= $(PB_LDFLAGS) $(MONGOD_LDFLAGS) -pthread
 SOURCES 		= cached.c cache.c operation.c meta.c wrapper.c
 OBJ 			= $(SOURCES:.c=.o)
 TARGET 			= cached
@@ -35,7 +35,7 @@ $(TARGET): $(OBJ)
 test:
 	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) -o $(TEST_TARGET) $(TEST_LDFLAGS)
 
-cache-test:
+cache-test: proto
 	$(CC) $(CFLAGS) meta.c wrapper.c cache.c cache-test.c proto/*.c -o cache-test $(LDFLAGS)
 
 clean:
