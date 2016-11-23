@@ -1,13 +1,30 @@
-.PHONY: clean operation-test
+.PHONY: proto test clean
 
-CC 			= gcc
-CFLAGS 		+= `pkg-config --cflags libmongoc-1.0` -LLIBDIR -Wall
-LDFLAGS 	+= `pkg-config --libs libmongoc-1.0` -pthread
-SOURCES 	= cached.c cache.c operation.c meta.c wrapper.c
-OBJ 		= $(SOURCES:.c=.o)
-TARGET 		= cached
+CC 				= gcc
 
-all: $(TARGET)
+PB_CFLAGS		= `pkg-config --cflags 'libprotobuf-c >= 1.0.0'`
+PB_LDFLAGS		= `pkg-config --libs 'libprotobuf-c >= 1.0.0'` -lprotobuf-c
+
+MONGOD_CLFLAGS	= `pkg-config --cflags libmongoc-1.0` -LLIBDIR
+MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
+
+CFLAGS 			+= $(MONGOD_CLFLAGS) -Wall
+LDFLAGS 		+= $(MONGOD_LDFLAGS) -pthread
+SOURCES 		= cached.c cache.c operation.c meta.c wrapper.c
+OBJ 			= $(SOURCES:.c=.o)
+TARGET 			= cached
+
+PROTO_DIR		= "./proto/"
+
+TEST_SOURCES    = mcache.c proto/*.c wrapper.c
+TEST_TARGET 	= mcache
+TEST_CFLAGS 	= $(PB_CFLAGS)
+TEST_LDFLAGS 	= $(PB_LDFLAGS) -pthread
+
+all: proto $(TARGET) test
+
+proto:
+	$(MAKE) -C $(PROTO_DIR)
 
 $(TARGET): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
@@ -15,8 +32,12 @@ $(TARGET): $(OBJ)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
-operation-test: operation-test.c operation.c cache.c meta.c wrapper.c
-	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
+test:
+	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) -o $(TEST_TARGET) $(TEST_LDFLAGS)
+
+cache-test:
+	$(CC) $(CFLAGS) meta.c wrapper.c cache.c cache-test.c proto/*.c -o cache-test $(LDFLAGS)
 
 clean:
+	$(MAKE) clean -C $(PROTO_DIR)
 	-rm -f $(TARGET) *.o operation-test

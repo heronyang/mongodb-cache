@@ -152,7 +152,7 @@ Meta *bson2meta(const bson_t *doc, const char *cid) {
 
 }
 
-bool db_post(Meta *meta) {
+bool db_post(Meta meta) {
 
     if(!isValidChecksum(meta)) {
         printf("Invalid meta with wrong checksum\n");
@@ -171,18 +171,17 @@ bool db_post(Meta *meta) {
 
     // append data
 
-    bson_oid_init_from_string (&oid, meta->cid);
+    bson_oid_init_from_string (&oid, meta.cid);
     BSON_APPEND_OID (doc, "_id", &oid);
-    BSON_APPEND_UTF8(doc, "sid", meta->sid);
+    BSON_APPEND_UTF8(doc, "sid", meta.sid);
 
-    BSON_APPEND_BINARY(doc, "content", BSON_SUBTYPE_BINARY, meta->content, meta->len);
+    BSON_APPEND_BINARY(doc, "content", BSON_SUBTYPE_BINARY,
+            meta.content.data, meta.content.len);
+    BSON_APPEND_INT32(doc, "initial_seq", meta.initial_seq);
 
-    BSON_APPEND_INT64(doc, "len", meta->len);
-    BSON_APPEND_INT64(doc, "initial_seq", meta->initial_seq);
-
-    BSON_APPEND_TIME_T(doc, "ttl", meta->ttl);
-    BSON_APPEND_TIME_T(doc, "created", meta->ttl);
-    BSON_APPEND_TIME_T(doc, "accessed", meta->ttl);
+    BSON_APPEND_INT32(doc, "ttl", meta.ttl);
+    BSON_APPEND_INT64(doc, "created_time", meta.created_time);
+    BSON_APPEND_INT64(doc, "accessed_time", meta.accessed_time);
 
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error)) {
         bson_destroy (doc);
@@ -198,6 +197,7 @@ bool db_post(Meta *meta) {
 
 }
 
-bool isValidChecksum(Meta *meta) {
+bool isValidChecksum(Meta meta) {
+    // TODO
     return true;
 }

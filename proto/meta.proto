@@ -4,11 +4,10 @@ message Meta {
     required string sid = 2;
 
     required bytes content = 3;
+    required uint32 initial_seq = 4;
 
-    required uint32 len = 4;
-    required uint32 initial_seq = 5;
-
-    required int64 created = 6;
-    required int64 accessed = 7;
+    optional uint32 ttl = 5;
+    optional int64 created_time = 6;
+    optional int64 accessed_time = 7;
 
 }
