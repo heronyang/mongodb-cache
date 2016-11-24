@@ -20,14 +20,23 @@ Buffer *generate_post_operation_serialized() {
     // Meta
     Meta meta = META__INIT;
     meta.cid = "83e9ce27e198605616ef247aa5aeb411dcac065c";
-    meta.sid = "5b9f884a931a2c8f161c24739393f71895d645c1";
+    meta.sid = "5a9f884a931a2c8f161c24739393f71895d645c1";
 
     ProtobufCBinaryData content; 
+    content.len = 26;
     content.data = malloc_w(26);
-    content.len  = 26;
+
+    int i;
+    for(i=0; i<26;i ++) {
+        content.data[i] = 'A' + i;
+    }
+
     meta.content = content;
 
-    meta.initial_seq = 200;
+    meta.initial_seq = 3456;
+    meta.ttl = 30;
+
+    print_meta(&meta);
 
     // Operation
     Operation operation = OPERATION__INIT;
@@ -107,7 +116,7 @@ void get_operation() {
     }
 
     Meta *meta = meta__unpack(NULL, len, content);
-    printf("sid = %.*s\n", SHA1_LENGTH, meta->sid);
+    print_meta(meta);
 
     // free
     free_buffer(buffer);

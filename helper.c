@@ -1,5 +1,19 @@
 #include "helper.h"
 
+void print_meta(Meta *meta) {
+    printf("[Meta]\n");
+    printf("\tcid = %.*s\n", SHA1_LENGTH, meta->cid);
+    printf("\tsid = %.*s\n", SHA1_LENGTH, meta->sid);
+    printf("\tcontent = %.*s (%zu)\n", (int)meta->content.len, meta->content.data, meta->content.len);
+    printf("\t");
+    int i;
+    for(i=0;i<meta->content.len;i++) {
+        printf("[%02x] ", meta->content.data[i]);
+    }
+    printf("\n");
+    printf("\tttl = %u, initial_seq = %u\n", meta->ttl, meta->initial_seq);
+}
+
 void print_buffer(int len, uint8_t *buffer) {
 
     int i;
