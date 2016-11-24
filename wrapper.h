@@ -25,6 +25,8 @@ typedef struct sockaddr SA;
 
 int listen_on_w(int port);
 int accept_w(int s, struct sockaddr *addr, socklen_t *addr_len);
+int connect_to(char *host, int port);
+ssize_t write_w(int fd, const void *buf, size_t count);
 
 int pthread_create_w(pthread_t *thread, const pthread_attr_t *attr,
             void *(*start_routine)(void*), void *arg);

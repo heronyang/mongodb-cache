@@ -3,143 +3,156 @@
 
 #include "config.h"
 #include "wrapper.h"
-#include "meta.h"
 #include "cache.h"
+
+#include "proto/meta.pb-c.h"
+#include "proto/operation.pb-c.h"
 
 static volatile bool running = true;
 sem_t sem;
 
-void request_get(int connfd);
-void remove_tailing_newline(char *str);
-void write_to_conn(int connfd, char *content, int size);
-void request_post(int connfd);
-void request_failed(int connfd, char *message);
-
 /******************** Worker ********************/
 
-void operation_handler(int connfd) {
+void print_buffer(int len, uint8_t *buffer) {
 
-    int n;
-    char operation_code[1], op;
-    bzero(operation_code, 1);
+    int i;
 
-    n = read(connfd, operation_code, 1);
-    if(n < 0) {
-        printf("Error found in reading from socket\n");
-        request_failed(connfd, "can\'t read from socket");
-        return;
+    printf("> %d,\t", len);
+    for(i=0; i<len; i++) {
+        if(i % 20 == 0) {
+            printf("\n");
+        }
+        printf("[%02x]  ", buffer[i]);
     }
 
-    op = operation_code[0];
-    if(op == OP_GET) {
-        request_get(connfd);
-    } else if(op == OP_POST) {
-        request_post(connfd);
-    } else {
-        request_failed(connfd, "invalid operation code");
-    }
+    printf("\n");
 
 }
 
-void request_get(int connfd) {
+/*
+ * First 4 bytes of the data indicates the len
+ */
+size_t read_len(int clientfd) {
 
-    int n;
-    char buffer[BUFFER_SIZE];
-    char *cid;
-    bzero(buffer, BUFFER_SIZE);
+    uint8_t buffer[HEADER_SIZE];
+    int n_read = recv(clientfd, buffer, HEADER_SIZE, 0);
 
-    n = read(connfd, buffer, BUFFER_SIZE);
-    if(n < 0) {
-        printf("Error found in reading from socket\n");
-        request_failed(connfd, "can\'t read from socket");
-        return;
+    if(n_read != HEADER_SIZE) {
+        perror("Error in reading header");
+        return 0;
     }
 
-    remove_tailing_newline(buffer);
-    cid = malloc_w(strlen(buffer));
-    strncpy(cid, buffer, strlen(buffer));
-
-    Meta *meta = db_get(cid);
-    if(meta == NULL) {
-        printf("Error meta not found\n");
-        request_failed(connfd, "Error: can\'t find meta\n");
-        return;
+    int len = 0, i;
+    for(i=0; i<HEADER_SIZE; i++) {
+        len += buffer[i];
+        if(i != HEADER_SIZE - 1) {
+            len <<= 8;
+        }
+        printf("%d, %02x, len = %x\n", i, buffer[i], len);
     }
 
-    write_to_conn(connfd, (char *)meta->content, sizeof(meta->content));
-
+    return len;
 }
 
-void remove_tailing_newline(char *str) {
-    size_t len = strlen(str) - 1;
-    while(len >= 0 && (str[len] == '\n' || str[len] == '\r')) {
-        str[len] = '\0';
-        len --;
-    }
-}
+/*
+ * Read following content with specific len, if failed, return NULL
+ */
+uint8_t *read_content(int clientfd, size_t len) {
 
-void write_to_conn(int connfd, char *content, int size) {
-
-    int n, i=0, to_send_size;
+    int n_read, n_read_total = 0;
+    uint8_t buffer[BUFFER_SIZE];
+    uint8_t *content = malloc(len);
+    uint8_t *iterator = content;
 
     while(true) {
 
-        to_send_size = (size > BUFFER_SIZE) ? BUFFER_SIZE : size;
+        n_read = recv(clientfd, buffer, BUFFER_SIZE, 0);
 
-        n = write(connfd, content + i * BUFFER_SIZE, to_send_size);
-        if(n < 0) {
-            printf("Error found in writing to socket\n");
-        }
-
-        size -= to_send_size;
-        if(size <= 0) {
+        if(n_read == -1) {
+            perror("Error in reading content");
+            return NULL;
+        } else if(n_read == 0) {    // EOF
             break;
         }
 
-        i++;
+        memcpy(iterator, buffer, n_read);
+        print_buffer(n_read, buffer);
+        iterator += n_read;
+        n_read_total += n_read;
 
     }
 
+    if(n_read != 0) {
+        perror("Recv failed\n");
+        free(content);
+        return NULL;
+    }
+
+    printf("Successfully read %d bytes for content\n", n_read_total);
+    return content;
+
 }
 
-void request_post(int connfd) {
-}
+void operation_handler(int clientfd) {
 
-void request_failed(int connfd, char *message) {
+    // get len
+    size_t len = read_len(clientfd);
+    if(len == 0) {
+        return;
+    }
 
-    char buffer[BUFFER_SIZE];
-    bzero(buffer, BUFFER_SIZE);
-    sprintf(buffer, "Error: %s\n", message);
+    // get content
+    uint8_t *content = read_content(clientfd, len);
+    if(content == NULL) {
+        return;
+    }
 
-    write_to_conn(connfd, buffer, BUFFER_SIZE);
+    Operation *operation;
+    operation = operation__unpack(NULL, len, content);
+    if(operation == NULL) {
+        printf("Error found while unpacking operation\n");
+        return;
+    }
+
+    if(operation->op == OP_GET) {
+    } else if(operation->op == OP_POST) {
+        // FIXME: close clientfd before db_post
+        db_post(operation->meta);
+    } else {
+        printf("Error: unseen operation\n");
+    }
+
+    operation__free_unpacked(operation, NULL);
 
 }
 
 /*
  * Entry function run by each worker
  */
-void *worker(void *connfd_p) {
+void *worker(void *clientfd_p) {
 
     // parse parameters and release resources
-    int connfd = *((int *) connfd_p);
+    int clientfd = *((int *) clientfd_p);
     pthread_detach_w(pthread_self());   // no pthread_join
-    free(connfd_p);
+    free(clientfd_p);
 
     // run job
     sem_wait_w(&sem);
-    operation_handler(connfd);
+    printf("Connected\n");
+    operation_handler(clientfd);
     sem_post_w(&sem);
 
     // close
-    close(connfd);
+    close(clientfd);
     return NULL;
+
 }
 
 /******************** Main ********************/
 
 void signal_handler(int dummy) {
     running = false;
-    printf("Will shutdown after next connection\n");
+    connect_to(HOST, PORT); // to terminate accept in main loop
 }
 
 void init() {
@@ -160,7 +173,7 @@ void deinit() {
 
 int main(int argc, char **argv) {
 
-    int listenfd, *connfd_p;
+    int listenfd, *clientfd_p;
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
     pthread_t thread;
@@ -172,17 +185,21 @@ int main(int argc, char **argv) {
     listenfd = listen_on_w(PORT);
     printf("Listening on %d...\n", PORT);
 
-    while(running) {
+    while(true) {
 
         // wait for connection
         client_addr_len = sizeof(client_addr);
-        connfd_p = malloc_w(sizeof(int));
-        *connfd_p = accept_w(listenfd,
+        clientfd_p = malloc_w(sizeof(int));
+        *clientfd_p = accept_w(listenfd,
                 (SA *) &client_addr,
                 &client_addr_len);
 
+        if(!running) {
+            break;
+        }
+
         // create new create per new connection
-        pthread_create_w(&thread, NULL, worker, connfd_p);
+        pthread_create_w(&thread, NULL, worker, clientfd_p);
 
     }
 

@@ -65,6 +65,50 @@ int accept_w(int s, struct sockaddr *addr, socklen_t *addr_len) {
     return r;
 }
 
+/*
+ * Connect to server:port, exit if error found
+ */
+int connect_to(char *host, int port) {
+
+    int clientfd;
+    struct hostent *server;
+    struct sockaddr_in server_addr;
+
+    if((clientfd = socket(AF_INET, SOCK_STREAM, 0)) <0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    if((server = gethostbyname(host)) == NULL) {
+        perror("gethostbyname");
+        exit(EXIT_FAILURE);
+    }
+
+    bzero((char *)&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr,
+          (char *)&server_addr.sin_addr.s_addr,
+          server->h_length);
+    server_addr.sin_port = htons(port);
+
+    if(connect(clientfd, (SA *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connect");
+        exit(EXIT_FAILURE);
+    }
+
+    return clientfd;
+
+}
+
+ssize_t write_w(int fd, const void *buf, size_t count) {
+    ssize_t r;
+    if((r = write(fd, buf, count)) < 0) {
+        perror("write");
+        exit(EXIT_FAILURE);
+    }
+    return r;
+}
+
 /******************** Thread ********************/
 
 /*

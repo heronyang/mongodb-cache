@@ -1,4 +1,4 @@
-.PHONY: proto test clean cache-test
+.PHONY: proto cached-test cache-test clean
 
 CC 				= gcc
 
@@ -10,7 +10,7 @@ MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
 
 CFLAGS 			+= $(PB_CFLAGS) $(MONGOD_CLFLAGS) -Wall
 LDFLAGS 		+= $(PB_LDFLAGS) $(MONGOD_LDFLAGS) -pthread
-SOURCES 		= cached.c cache.c operation.c meta.c wrapper.c
+SOURCES 		= cached.c cache.c wrapper.c proto/meta.pb-c.c proto/operation.pb-c.c
 OBJ 			= $(SOURCES:.c=.o)
 TARGET 			= cached
 
@@ -21,7 +21,7 @@ TEST_TARGET 	= mcache
 TEST_CFLAGS 	= $(PB_CFLAGS)
 TEST_LDFLAGS 	= $(PB_LDFLAGS) -pthread
 
-all: proto $(TARGET) test
+all: proto $(TARGET) cached-test
 
 proto:
 	$(MAKE) -C $(PROTO_DIR)
@@ -30,9 +30,9 @@ $(TARGET): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< -o $@
 
-test:
+cached-test:
 	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) -o $(TEST_TARGET) $(TEST_LDFLAGS)
 
 cache-test: proto
@@ -40,4 +40,4 @@ cache-test: proto
 
 clean:
 	$(MAKE) clean -C $(PROTO_DIR)
-	-rm -f $(TARGET) *.o operation-test
+	-rm -f $(TARGET) *.o cache-test proto/*.o

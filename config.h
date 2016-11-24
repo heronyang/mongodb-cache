@@ -1,10 +1,12 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#define HOST                "127.0.0.1"
 #define PORT                8000
 #define LISTEN_BACKLOG      1024
 #define MAX_CONNECTION      3
 #define BUFFER_SIZE         256
+#define HEADER_SIZE         4
 
 #define OP_GET              0
 #define OP_POST             1

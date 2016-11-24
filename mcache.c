@@ -1,16 +1,23 @@
 #include <stdio.h>
+#include <string.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include "wrapper.h"
 #include "config.h"
 #include "proto/meta.pb-c.h"
 #include "proto/operation.pb-c.h"
 
+typedef struct _Buffer {
+    size_t len;
+    uint8_t *data;
+} Buffer;
+
 /*
  * Create dummy serialized POST operation structure
  */
-void *generate_post_operation_serialized() {
+Buffer *generate_post_operation_serialized() {
 
-    void *buf;
-    unsigned len;
+    Buffer *buffer = malloc_w(sizeof(Buffer));
 
     // Meta
     Meta meta = META__INIT;
@@ -30,21 +37,62 @@ void *generate_post_operation_serialized() {
     operation.cid = meta.cid;
     operation.meta = &meta;
 
-    // serialize
-    len = operation__get_packed_size(&operation);
-    buf = malloc_w(len);
-    operation__pack(&operation, buf);
+    // Serialize
+    buffer->len = (size_t) operation__get_packed_size(&operation);
+    buffer->data = malloc_w(buffer->len);
+    operation__pack(&operation, buffer->data);
 
-    printf("Get %d serialized bytes\n", len);
+    printf("Get %zu serialized bytes\n", buffer->len);
 
-    return buf;
+    return buffer;
 
+}
+
+uint8_t *generate_packet(Buffer *buffer) {
+
+    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+
+    // header (len)
+    packet[0] = (buffer->len >> 24) & 0xff;
+    packet[1] = (buffer->len >> 16) & 0xff;
+    packet[2] = (buffer->len >> 8) & 0xff;
+    packet[3] = (buffer->len >> 0) & 0xff;
+
+    // content
+    memcpy(packet + HEADER_SIZE, buffer->data, buffer->len);
+
+    return packet;
+
+}
+
+void write_socket(Buffer *buffer) {
+
+    // packet
+    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+    packet = generate_packet(buffer);
+
+    // socket
+    printf("Connecting to %s:%d...\n", HOST, PORT);
+    int sockfd = connect_to(HOST, PORT);
+
+    // write
+    int n;
+    n = write_w(sockfd, packet, HEADER_SIZE + buffer->len);
+
+    printf("Write %d bytes succeed\n", n);
+
+}
+
+void free_buffer(Buffer *buffer) {
+    free(buffer->data);
+    free(buffer);
 }
 
 void post_operation() {
 
-    void *buf = generate_post_operation_serialized();
-    free(buf);
+    Buffer *buffer = generate_post_operation_serialized();
+    write_socket(buffer);
+    free(buffer);
 
 }
 
