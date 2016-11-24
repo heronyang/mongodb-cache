@@ -42,10 +42,29 @@ Buffer *generate_post_operation_serialized() {
     buffer->data = malloc_w(buffer->len);
     operation__pack(&operation, buffer->data);
 
-    printf("Get %zu serialized bytes\n", buffer->len);
+    printf("Get %zu serialized bytes (post operation)\n", buffer->len);
 
     return buffer;
 
+}
+
+Buffer *generate_get_operation_serialized() {
+
+    Buffer *buffer = malloc_w(sizeof(Buffer));
+
+    // Operation
+    Operation operation = OPERATION__INIT;
+    operation.op = OP_GET;
+    operation.cid = "83e9ce27e198605616ef247aa5aeb411dcac065c";
+
+    // Serialize
+    buffer->len = (size_t) operation__get_packed_size(&operation);
+    buffer->data = malloc_w(buffer->len);
+    operation__pack(&operation, buffer->data);
+
+    printf("Get %zu serialized bytes (get operation)\n", buffer->len);
+
+    return buffer;
 }
 
 uint8_t *generate_packet(Buffer *buffer) {
@@ -83,6 +102,10 @@ void write_socket(Buffer *buffer) {
 
 }
 
+uint8_t *read_socket() {
+    return NULL;
+}
+
 void free_buffer(Buffer *buffer) {
     free(buffer->data);
     free(buffer);
@@ -97,6 +120,11 @@ void post_operation() {
 }
 
 void get_operation() {
+    Buffer *buffer = generate_get_operation_serialized();
+    write_socket(buffer);
+    uint8_t *data = read_socket();
+    // Meta *meta = meta__unpack(NULL, len, content);
+    free(buffer);
 }
 
 int main(int argc, char *argv[]) {

@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 #include <bson.h>
-#include <bcon.h>
 #include <mongoc.h>
 #include <stdbool.h>
 

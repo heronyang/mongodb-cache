@@ -10,13 +10,13 @@ MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
 
 CFLAGS 			+= $(PB_CFLAGS) $(MONGOD_CLFLAGS) -Wall
 LDFLAGS 		+= $(PB_LDFLAGS) $(MONGOD_LDFLAGS) -pthread
-SOURCES 		= cached.c cache.c wrapper.c proto/meta.pb-c.c proto/operation.pb-c.c
+SOURCES 		= cached.c cache.c wrapper.c helper.c proto/meta.pb-c.c proto/operation.pb-c.c
 OBJ 			= $(SOURCES:.c=.o)
 TARGET 			= cached
 
 PROTO_DIR		= "./proto/"
 
-TEST_SOURCES    = mcache.c proto/*.c wrapper.c
+TEST_SOURCES    = mcache.c proto/*.c wrapper.c helper.c
 TEST_TARGET 	= mcache
 TEST_CFLAGS 	= $(PB_CFLAGS)
 TEST_LDFLAGS 	= $(PB_LDFLAGS) -pthread
