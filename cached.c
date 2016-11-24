@@ -31,7 +31,7 @@ void operation_handler(int clientfd) {
     // get content
     uint8_t *content = read_content(clientfd, len);
     if(content == NULL) {
-        printf("Error while reading content\n");
+        printf("Error found while reading content\n");
         return;
     }
 
@@ -43,8 +43,6 @@ void operation_handler(int clientfd) {
         printf("Error found while unpacking operation\n");
         return;
     }
-
-    printf("op = %d\n", operation->op);
 
     if(operation->op == OP_GET) {
         operation_get_handler(clientfd, operation->cid);

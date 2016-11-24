@@ -2,9 +2,11 @@
 #include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
+
 #include "wrapper.h"
 #include "config.h"
 #include "helper.h"
+
 #include "proto/meta.pb-c.h"
 #include "proto/operation.pb-c.h"
 
@@ -61,6 +63,7 @@ Buffer *generate_get_operation_serialized() {
     printf("Get %zu serialized bytes (get operation)\n", buffer->len);
 
     return buffer;
+
 }
 
 void post_operation() {
