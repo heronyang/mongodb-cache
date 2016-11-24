@@ -1,3 +1,8 @@
+/**
+ * cached
+ * ======
+ * Cache daemon which reads operation requestions from socket
+ */
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
@@ -14,10 +19,10 @@
 static volatile bool running = true;
 sem_t sem;
 
+/* Operation Handlers */
+
 void operation_get_handler(int clientfd, char *cid);
 void operation_post_handler(int clientfd, Meta *meta);
-
-/******************** Worker ********************/
 
 void operation_handler(int clientfd) {
 
@@ -35,6 +40,7 @@ void operation_handler(int clientfd) {
         return;
     }
 
+    // unpack operation
     Operation *operation;
     operation = operation__unpack(NULL, len, content);
 
@@ -44,15 +50,17 @@ void operation_handler(int clientfd) {
         return;
     }
 
+    // run different operation based on the op field
     if(operation->op == OP_GET) {
         operation_get_handler(clientfd, operation->cid);
     } else if(operation->op == OP_POST) {
-        // FIXME: close clientfd before db_post
+        // FIXME: close clientfd before db_post, faster
         operation_post_handler(clientfd, operation->meta);
     } else {
         printf("Error: unseen operation\n");
     }
 
+    // free
     operation__free_unpacked(operation, NULL);
     free(content);
 
@@ -60,13 +68,16 @@ void operation_handler(int clientfd) {
 
 void operation_get_handler(int clientfd, char *cid) {
 
+    // get requested meta
     Meta *meta = db_get(cid);
 
+    // parse response into proper buffer
     Buffer *buffer = malloc_w(sizeof(Buffer));
     buffer->len = (size_t) meta__get_packed_size(meta);
     buffer->data = malloc_w(buffer->len);
     meta__pack(meta, buffer->data);
 
+    // write to the client socket
     write_socket(clientfd, buffer);
     free_buffer(buffer);
 
@@ -76,9 +87,7 @@ void operation_post_handler(int clientfd, Meta *meta) {
     db_post(meta);
 }
 
-/*
- * Entry function run by each worker
- */
+/* Worker Flow */
 void *worker(void *clientfd_p) {
 
     // parse parameters and release resources
@@ -98,7 +107,7 @@ void *worker(void *clientfd_p) {
 
 }
 
-/******************** Main ********************/
+/* Main Flow */
 
 void signal_handler(int dummy) {
     running = false;

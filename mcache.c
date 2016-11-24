@@ -1,3 +1,8 @@
+/**
+ * mcache
+ * ======
+ * Cached user (main file), which does one post the one get operation
+ */
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>

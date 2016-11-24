@@ -1,9 +1,10 @@
-#include "cache.h"
-
-bool isValidChecksum(Meta *meta);
-
-/*
+/**
+ * cache
+ * =====
+ * A non thread-safe cache interface, provides get and post operations.
+ *
  * Reference
+ * =========
  *
  * MongoDB C Driver API
  * - http://mongoc.org/libmongoc/1.4.2/index.html#api-reference
@@ -14,6 +15,12 @@ bool isValidChecksum(Meta *meta);
  *
  */
 
+#include "cache.h"
+
+bool isValidChecksum(Meta *meta);
+
+/* Connection Objects */
+
 static mongoc_uri_t *uri;
 static mongoc_client_pool_t *pool;
 
@@ -23,8 +30,12 @@ typedef struct _Connection {
     mongoc_collection_t  *collection;
 } Connection;
 
-void bson_init_from_meta(bson_t *doc, Meta *meta);
+/* Prototypes */
+
+void meta2bson(bson_t *doc, Meta *meta);
 Meta *bson2meta(const bson_t *doc, const char *cid);
+
+/* Database */
 
 void db_init() {
 
@@ -64,6 +75,8 @@ void release_connection(Connection *connection) {
     free(connection);
 
 }
+
+/* Operation */
 
 Meta *db_get(const char *cid) {
 
@@ -184,7 +197,7 @@ bool db_post(Meta *meta) {
 
     bson_t *doc;
     doc = bson_new();
-    bson_init_from_meta(doc, meta);
+    meta2bson(doc, meta);
 
     bson_error_t error;
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, doc, NULL, &error)) {
@@ -201,7 +214,7 @@ bool db_post(Meta *meta) {
 
 }
 
-void bson_init_from_meta(bson_t *doc, Meta *meta) {
+void meta2bson(bson_t *doc, Meta *meta) {
 
     bson_oid_t oid;
 
@@ -221,6 +234,8 @@ void bson_init_from_meta(bson_t *doc, Meta *meta) {
     BSON_APPEND_TIME_T(doc, "accessed_time", meta->accessed_time);
 
 }
+
+/* Helper */
 
 bool isValidChecksum(Meta *meta) {
     // TODO

@@ -1,6 +1,11 @@
+/**
+ * wrapper
+ * =======
+ * Wrappers for different party APIs
+ */
 #include "wrapper.h"
 
-/******************** Socket ********************/
+/* Socket */
 
 /*
  * Listen on port, return the socket if succeed
@@ -109,7 +114,7 @@ ssize_t write_w(int fd, const void *buf, size_t count) {
     return r;
 }
 
-/******************** Thread ********************/
+/* Thread */
 
 /*
  * Wrapper for pthread_create
@@ -136,7 +141,7 @@ int pthread_detach_w(pthread_t thread) {
     return r;
 }
 
-/******************** Semaphore ********************/
+/* Semaphore */
 
 void sem_init_w(sem_t *sem, int pshared, unsigned int value) {
     if(sem_init(sem, pshared, value) < 0) {
@@ -157,7 +162,7 @@ void sem_post_w(sem_t *sem) {
     }
 }
 
-/******************** Other ********************/
+/* Other */
 
 /*
  * Wrapper for malloc

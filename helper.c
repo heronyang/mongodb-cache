@@ -1,17 +1,27 @@
+/**
+ * helper
+ * ======
+ * Helper functions which can be applied by different components
+ */
 #include "helper.h"
 
+/* Log & Debug */
+
 void print_meta(Meta *meta) {
+
+    int i;
+
     printf("[Meta]\n");
     printf("\tcid = %.*s\n", SHA1_LENGTH, meta->cid);
     printf("\tsid = %.*s\n", SHA1_LENGTH, meta->sid);
     printf("\tcontent = %.*s (%zu)\n", (int)meta->content.len, meta->content.data, meta->content.len);
     printf("\t");
-    int i;
     for(i=0;i<meta->content.len;i++) {
         printf("[%02x] ", meta->content.data[i]);
     }
     printf("\n");
     printf("\tttl = %u, initial_seq = %u\n", meta->ttl, meta->initial_seq);
+
 }
 
 void print_buffer(int len, uint8_t *buffer) {
@@ -27,6 +37,28 @@ void print_buffer(int len, uint8_t *buffer) {
     }
 
     printf("\n");
+
+}
+
+/* Socket */
+
+/*
+ * Generate simple packet with header size = 4 (contains body size)
+ */
+uint8_t *generate_packet(Buffer *buffer) {
+
+    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+
+    // header (len)
+    packet[0] = (buffer->len >> 24) & 0xff;
+    packet[1] = (buffer->len >> 16) & 0xff;
+    packet[2] = (buffer->len >> 8) & 0xff;
+    packet[3] = (buffer->len >> 0) & 0xff;
+
+    // content
+    memcpy(packet + HEADER_SIZE, buffer->data, buffer->len);
+
+    return packet;
 
 }
 
@@ -91,28 +123,14 @@ uint8_t *read_content(int clientfd, size_t len) {
 
     print_buffer(n_read_total, buffer);
 
-    printf("Successfully read %d bytes for content\n", n_read_total);
+    printf("Read %d bytes for content\n", n_read_total);
     return content;
 
 }
 
-uint8_t *generate_packet(Buffer *buffer) {
-
-    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
-
-    // header (len)
-    packet[0] = (buffer->len >> 24) & 0xff;
-    packet[1] = (buffer->len >> 16) & 0xff;
-    packet[2] = (buffer->len >> 8) & 0xff;
-    packet[3] = (buffer->len >> 0) & 0xff;
-
-    // content
-    memcpy(packet + HEADER_SIZE, buffer->data, buffer->len);
-
-    return packet;
-
-}
-
+/*
+ * Write buffer to socket
+ */
 void write_socket(int sockfd, Buffer *buffer) {
 
     // packet
@@ -126,6 +144,9 @@ void write_socket(int sockfd, Buffer *buffer) {
 
 }
 
+/*
+ * Free buffer
+ */
 void free_buffer(Buffer *buffer) {
     free(buffer->data);
     free(buffer);

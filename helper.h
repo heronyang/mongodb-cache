@@ -15,6 +15,8 @@ typedef struct _Buffer {
     uint8_t *data;
 } Buffer;
 
+void print_meta(Meta *meta);
+
 size_t read_len(int clientfd);
 uint8_t *read_content(int clientfd, size_t len);
 

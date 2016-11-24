@@ -36,7 +36,7 @@ cached-test:
 	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) -o $(TEST_TARGET) $(TEST_LDFLAGS)
 
 cache-test: proto
-	$(CC) $(CFLAGS) meta.c wrapper.c cache.c cache-test.c proto/*.c -o cache-test $(LDFLAGS)
+	$(CC) $(CFLAGS) wrapper.c cache.c cache-test.c proto/*.c helper.c -o cache-test $(LDFLAGS)
 
 clean:
 	$(MAKE) clean -C $(PROTO_DIR)

@@ -47,3 +47,4 @@ Usage: ./mcache-test [OPTIONS]
 ## Todo
 
 - implement garbage collector thread
+- memory leak testing
