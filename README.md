@@ -13,13 +13,19 @@ A cache implementation using MongoDB in C
 > make
 ```
 
+## Run Cache Daemon
+
+```
+> ./cached
+```
+
 ## Run Example
 
 ```
 > ./mcache
 ```
 
-## Run Test
+## Run Test - Cache Daemon API
 
 ```
 Usage: ./mcache-test [OPTIONS]
@@ -29,22 +35,15 @@ Usage: ./mcache-test [OPTIONS]
   -h            Displays this help.
 ```
 
+## Run Test - Cache API
+
+```
+> make cache-test
+> ./cache-test
+```
+
 ## Result
-
-|        | Thread | Chunk size | # Put Operations | Execution Time |
-|--------|--------|------------|------------------|--------------- |
-| Test 1 |      1 |       1 MB |              500 |  15.951422 sec |
-| Test 2 |      1 |       1 MB |              200 |  11.564633 sec |
-| Test 3 |      2 |       1 MB |              200 |  10.297076 sec |
-
-## Issue
-
-- mongod crashes after around 800 put operations
-- haven't implemented any chunk discard policy
 
 ## Todo
 
-- create operation object (action, meta)
-- pass operations via socket, handled by cached worker
-- add created time / accessed time
 - implement garbage collector thread
