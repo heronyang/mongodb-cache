@@ -4,13 +4,9 @@
 #include <netinet/in.h>
 #include "wrapper.h"
 #include "config.h"
+#include "helper.h"
 #include "proto/meta.pb-c.h"
 #include "proto/operation.pb-c.h"
-
-typedef struct _Buffer {
-    size_t len;
-    uint8_t *data;
-} Buffer;
 
 /*
  * Create dummy serialized POST operation structure
@@ -67,64 +63,52 @@ Buffer *generate_get_operation_serialized() {
     return buffer;
 }
 
-uint8_t *generate_packet(Buffer *buffer) {
-
-    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
-
-    // header (len)
-    packet[0] = (buffer->len >> 24) & 0xff;
-    packet[1] = (buffer->len >> 16) & 0xff;
-    packet[2] = (buffer->len >> 8) & 0xff;
-    packet[3] = (buffer->len >> 0) & 0xff;
-
-    // content
-    memcpy(packet + HEADER_SIZE, buffer->data, buffer->len);
-
-    return packet;
-
-}
-
-void write_socket(Buffer *buffer) {
-
-    // packet
-    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
-    packet = generate_packet(buffer);
-
-    // socket
-    printf("Connecting to %s:%d...\n", HOST, PORT);
-    int sockfd = connect_to(HOST, PORT);
-
-    // write
-    int n;
-    n = write_w(sockfd, packet, HEADER_SIZE + buffer->len);
-
-    printf("Write %d bytes succeed\n", n);
-
-}
-
-uint8_t *read_socket() {
-    return NULL;
-}
-
-void free_buffer(Buffer *buffer) {
-    free(buffer->data);
-    free(buffer);
-}
-
 void post_operation() {
 
     Buffer *buffer = generate_post_operation_serialized();
-    write_socket(buffer);
+
+    // socket
+    int sockfd = connect_to(HOST, PORT);
+
+    // send request, don't read response
+    write_socket(sockfd, buffer);
+
+    close(sockfd);
     free(buffer);
 
 }
 
 void get_operation() {
+
     Buffer *buffer = generate_get_operation_serialized();
-    write_socket(buffer);
-    uint8_t *data = read_socket();
-    // Meta *meta = meta__unpack(NULL, len, content);
-    free(buffer);
+
+    // socket
+    int sockfd = connect_to(HOST, PORT);
+
+    // send request
+    write_socket(sockfd, buffer);
+
+    // read response
+    // get len
+    size_t len = read_len(sockfd);
+    if(len == 0) {
+        free_buffer(buffer);
+        return;
+    }
+
+    // get content
+    uint8_t *content = read_content(sockfd, len);
+    if(content == NULL) {
+        free_buffer(buffer);
+        return;
+    }
+
+    Meta *meta = meta__unpack(NULL, len, content);
+    printf("sid = %.*s\n", SHA1_LENGTH, meta->sid);
+
+    // free
+    free_buffer(buffer);
+
 }
 
 int main(int argc, char *argv[]) {

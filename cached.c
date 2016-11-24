@@ -14,6 +14,9 @@
 static volatile bool running = true;
 sem_t sem;
 
+void operation_get_handler(int clientfd, char *cid);
+void operation_post_handler(int clientfd, Meta *meta);
+
 /******************** Worker ********************/
 
 void operation_handler(int clientfd) {
@@ -21,34 +24,58 @@ void operation_handler(int clientfd) {
     // get len
     size_t len = read_len(clientfd);
     if(len == 0) {
+        printf("Error while reading socket\n");
         return;
     }
 
     // get content
     uint8_t *content = read_content(clientfd, len);
     if(content == NULL) {
+        printf("Error while reading content\n");
         return;
     }
 
     Operation *operation;
     operation = operation__unpack(NULL, len, content);
+
     if(operation == NULL) {
+        free(content);
         printf("Error found while unpacking operation\n");
         return;
     }
 
+    printf("op = %d\n", operation->op);
+
     if(operation->op == OP_GET) {
-        Meta *meta = db_get(operation->cid);
-        printf("Get sid = %.*s\n", SHA1_LENGTH, meta->sid);
+        operation_get_handler(clientfd, operation->cid);
     } else if(operation->op == OP_POST) {
         // FIXME: close clientfd before db_post
-        db_post(operation->meta);
+        operation_post_handler(clientfd, operation->meta);
     } else {
         printf("Error: unseen operation\n");
     }
 
     operation__free_unpacked(operation, NULL);
+    free(content);
 
+}
+
+void operation_get_handler(int clientfd, char *cid) {
+
+    Meta *meta = db_get(cid);
+
+    Buffer *buffer = malloc_w(sizeof(Buffer));
+    buffer->len = (size_t) meta__get_packed_size(meta);
+    buffer->data = malloc_w(buffer->len);
+    meta__pack(meta, buffer->data);
+
+    write_socket(clientfd, buffer);
+    free_buffer(buffer);
+
+}
+
+void operation_post_handler(int clientfd, Meta *meta) {
+    db_post(meta);
 }
 
 /*

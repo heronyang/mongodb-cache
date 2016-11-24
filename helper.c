@@ -25,7 +25,8 @@ size_t read_len(int clientfd) {
     int n_read = recv(clientfd, buffer, HEADER_SIZE, 0);
 
     if(n_read != HEADER_SIZE) {
-        perror("Error in reading header");
+        printf("n_read = %d\n", n_read);
+        printf("Error in reading header\n");
         return 0;
     }
 
@@ -50,10 +51,11 @@ uint8_t *read_content(int clientfd, size_t len) {
     uint8_t buffer[BUFFER_SIZE];
     uint8_t *content = malloc(len);
     uint8_t *iterator = content;
+    size_t left = len;
 
     while(true) {
 
-        n_read = recv(clientfd, buffer, BUFFER_SIZE, 0);
+        n_read = recv(clientfd, buffer, left, 0);
 
         if(n_read == -1) {
             perror("Error in reading content");
@@ -63,19 +65,54 @@ uint8_t *read_content(int clientfd, size_t len) {
         }
 
         memcpy(iterator, buffer, n_read);
-        print_buffer(n_read, buffer);
         iterator += n_read;
         n_read_total += n_read;
+        left -= n_read;
+
+        if(left == 0) {
+            break;
+        }
 
     }
 
-    if(n_read != 0) {
-        perror("Recv failed\n");
-        free(content);
-        return NULL;
-    }
+    print_buffer(n_read_total, buffer);
 
     printf("Successfully read %d bytes for content\n", n_read_total);
     return content;
 
+}
+
+uint8_t *generate_packet(Buffer *buffer) {
+
+    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+
+    // header (len)
+    packet[0] = (buffer->len >> 24) & 0xff;
+    packet[1] = (buffer->len >> 16) & 0xff;
+    packet[2] = (buffer->len >> 8) & 0xff;
+    packet[3] = (buffer->len >> 0) & 0xff;
+
+    // content
+    memcpy(packet + HEADER_SIZE, buffer->data, buffer->len);
+
+    return packet;
+
+}
+
+void write_socket(int sockfd, Buffer *buffer) {
+
+    // packet
+    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+    packet = generate_packet(buffer);
+
+    // write
+    int n = write_w(sockfd, packet, HEADER_SIZE + buffer->len);
+
+    printf("Write %d bytes succeed\n", n);
+
+}
+
+void free_buffer(Buffer *buffer) {
+    free(buffer->data);
+    free(buffer);
 }

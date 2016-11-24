@@ -10,7 +10,15 @@
 #include "proto/meta.pb-c.h"
 #include "proto/operation.pb-c.h"
 
+typedef struct _Buffer {
+    size_t len;
+    uint8_t *data;
+} Buffer;
+
 size_t read_len(int clientfd);
 uint8_t *read_content(int clientfd, size_t len);
+
+void write_socket(int sockfd, Buffer *buffer);
+void free_buffer(Buffer *buffer);
 
 #endif
