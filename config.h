@@ -1,6 +1,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#include <stdbool.h>
+
 #define HOST                "127.0.0.1"
 #define PORT                8000
 #define LISTEN_BACKLOG      1024
@@ -16,5 +18,8 @@
 #define MONGODB_COLLECTION  "cache"
 
 #define SHA1_LENGTH         40  // SHA1: 160 bits = 40 hex char
+
+#define ENABLE_GARBAGE_COLLECTION       true
+#define TIME_PERIOD_GARBAGE_COLLECTION  3   // second
 
 #endif

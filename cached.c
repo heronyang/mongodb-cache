@@ -19,6 +19,21 @@
 static volatile bool running = true;
 sem_t sem;
 
+/* Garbage collector */
+void *garbage_collection_worker() {
+    while(true) {
+        sleep(TIME_PERIOD_GARBAGE_COLLECTION);
+        printf("Garbage collecting starts\n");
+        // TODO: clean up: (1) ttl (2) old accessed meta
+        printf("Garbage collecting done\n");
+        fflush(stdout);
+        if(!running) {
+            break;
+        }
+    }
+    return NULL;
+}
+
 /* Operation Handlers */
 
 void operation_get_handler(int clientfd, char *cid);
@@ -139,6 +154,11 @@ int main(int argc, char **argv) {
 
     //
     init();
+
+    // garbage collection worker
+    if(ENABLE_GARBAGE_COLLECTION) {
+        pthread_create_w(&thread, NULL, garbage_collection_worker, NULL);
+    }
 
     // start listening
     listenfd = listen_on_w(PORT);
