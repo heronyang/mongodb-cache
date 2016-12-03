@@ -24,7 +24,7 @@ void *garbage_collection_worker() {
 
     while(true) {
 
-        sleep(TIME_PERIOD_GARBAGE_COLLECTION);
+        sleep(GARBAGE_COLLECTION_TIME_PERIOD);
         db_cleanup();
 
         if(!running) {

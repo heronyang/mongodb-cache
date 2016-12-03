@@ -20,6 +20,7 @@
 #define SHA1_LENGTH         40  // SHA1: 160 bits = 40 hex char
 
 #define ENABLE_GARBAGE_COLLECTION       true
-#define TIME_PERIOD_GARBAGE_COLLECTION  3   // second
+#define GARBAGE_COLLECTION_TIME_PERIOD  3   // second
+#define GARBAGE_COLLECTION_THRESHOLD    0
 
 #endif
