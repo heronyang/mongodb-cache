@@ -39,6 +39,10 @@ Meta *bson2meta(const bson_t *doc, const char *cid);
 void db_update_accessed_time(Connection *connection, const char *cid);
 void db_scan_and_mark_ttl_expired_meta(Connection *connection);
 void db_scan_and_mark_old_meta(Connection *connection);
+void db_mark_meta_accessed_time_before(Connection *connection, time_t pivot_accessed_time);
+time_t get_pivot_accessed_time(Connection *connection, int64_t count);
+
+int time_t_compar(const void *a, const void *b);
 int64_t get_collection_count(Connection *connection);
 time_t *get_accessed_times(Connection *connection, int64_t count);
 void db_mark_meta(Connection *connection, const char *cid);
@@ -294,7 +298,7 @@ void db_cleanup() {
     Connection *connection = retrive_connection();
 
     db_scan_and_mark_ttl_expired_meta(connection);
-    db_scan_and_mark_old_meta(connection);
+    // db_scan_and_mark_old_meta(connection);
     db_delete_marked_meta(connection);
 
     release_connection(connection);
@@ -427,9 +431,9 @@ time_t get_accessed_time_from_doc(const bson_t *doc) {
 
 void db_scan_and_mark_old_meta(Connection *connection) {
 
-    time_t *accessed_times;
-
+    time_t pivot_accessed_time;
     int64_t count = get_collection_count(connection);
+
     if(count < 0) {
         printf("Error in counting documents in collection\n");
         return;
@@ -439,10 +443,24 @@ void db_scan_and_mark_old_meta(Connection *connection) {
         return;
     }
 
+    pivot_accessed_time = get_pivot_accessed_time(connection, count);
+    printf("pivot accessed_time = %ld\n", pivot_accessed_time);
+
+    db_mark_meta_accessed_time_before(connection, pivot_accessed_time);
+
+}
+
+time_t get_pivot_accessed_time(Connection *connection, int64_t count) {
+
+    time_t *accessed_times;
     accessed_times = get_accessed_times(connection, count);
     if(accessed_times == NULL) {
-        return;
+        return -1;
     }
+
+    // sort
+    qsort(accessed_times, (size_t)count,
+            sizeof(time_t), time_t_compar);
 
     // print for debug
     int64_t i;
@@ -451,7 +469,69 @@ void db_scan_and_mark_old_meta(Connection *connection) {
         printf("time = %ld\n", accessed_times[i]);
     }
 
+    int64_t index = count * GARBAGE_COLLECTION_PERCENTAGE / 100;
+
+    // fix corner cases
+    if(index < 0) {
+        index = 0;
+    } else if(index > count - 1) {
+        index = count - 1;
+    }
+
+    time_t pivot = accessed_times[index];
     free(accessed_times);
+
+    return pivot;
+
+}
+
+int time_t_compar(const void *a, const void *b) {
+    // sort time from new to old
+    return (*(time_t *)b - *(time_t *)a);
+}
+
+void db_mark_meta_accessed_time_before(Connection *connection, time_t pivot_accessed_time) {
+
+    // get collection
+    mongoc_collection_t *collection = connection->collection;
+
+    // variable setup
+    mongoc_cursor_t *cursor;
+    const bson_t *doc;
+    bson_t *query;
+    char *cid;
+
+    // query
+    query = bson_new();
+    /* FIXME: filter isn't working
+    // {accessed_time:{$lt:ISODate()}}
+    query = BCON_NEW(
+            "{",
+            "accessed_time"
+            "{",
+            "$lt", BCON_DATE_TIME(pivot_accessed_time * 1000),
+            "}"
+            "}"
+            );
+            */
+
+    cursor = mongoc_collection_find(collection,
+            MONGOC_QUERY_NONE, 0, 0, 0, query, NULL, NULL);
+
+    while(mongoc_cursor_next(cursor, &doc)) {
+        cid = get_cid_from_doc(doc);
+        if(cid == NULL) {
+            printf("Error in accessing cid, skip\n");
+            return;
+        }
+        db_mark_meta(connection, cid);
+        printf("marked: cid = %*s (accessed time too old)\n", SHA1_LENGTH, cid);
+    }
+
+    // release
+    bson_destroy(query);
+    mongoc_cursor_destroy(cursor);
+    free(cid);
 
 }
 
@@ -535,6 +615,45 @@ void db_mark_meta(Connection *connection, const char *cid) {
 }
 
 void db_delete_marked_meta(Connection *connection) {
+
+    int64_t count;
+
+    // get collection
+    mongoc_collection_t *collection = connection->collection;
+
+    // variable setup
+    bson_t *doc;
+    bson_error_t error;
+
+    doc = bson_new();
+    BSON_APPEND_BOOL(doc, "is_garbage", true);
+
+    count = mongoc_collection_count(collection,
+            MONGOC_QUERY_NONE, doc, 0, 0, NULL, &error);
+
+    if(count < 0) {
+        fprintf (stderr, "%s\n", error.message);
+        return;
+    }
+
+    if(count == 0) {
+        // nothing to delete
+        return;
+    }
+
+    printf("Garbage collector is deleting %ld meta items\n", count);
+
+    // update
+    if (!mongoc_collection_remove(collection,
+                MONGOC_REMOVE_NONE, doc, NULL, &error)) {
+        printf("Error: %s\n", error.message);
+    }
+
+    // release
+    if(doc) {
+        bson_destroy(doc);
+    }
+
 }
 
 /* Helper */
