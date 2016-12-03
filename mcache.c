@@ -24,7 +24,7 @@ Buffer *generate_post_operation_serialized() {
 
     // Meta
     Meta meta = META__INIT;
-    meta.cid = "b3e9ce27e198605616ef547aa5aeb411dcac065c";
+    meta.cid = "c3e9ce27e198605616ef547aa5aeb411dcac065c";
     meta.sid = "5a9f884a931a2c8f161c24739393f71895d645c1";
 
     ProtobufCBinaryData content; 
@@ -67,7 +67,7 @@ Buffer *generate_get_operation_serialized() {
     // Operation
     Operation operation = OPERATION__INIT;
     operation.op = OP_GET;
-    operation.cid = "b3e9ce27e198605616ef547aa5aeb411dcac065c";
+    operation.cid = "03e9ce27e198605616ef547aa5aeb411dcac065c";
 
     // Serialize
     buffer->len = (size_t) operation__get_packed_size(&operation);

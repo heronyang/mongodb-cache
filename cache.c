@@ -293,17 +293,17 @@ void meta2bson(bson_t *doc, Meta *meta) {
 
 void db_cleanup() {
 
-    printf("Garbage collecting starts\n");
+    printf("[Garbage collection] start\n");
 
     Connection *connection = retrive_connection();
 
     db_scan_and_mark_ttl_expired_meta(connection);
-    // db_scan_and_mark_old_meta(connection);
+    db_scan_and_mark_old_meta(connection);
     db_delete_marked_meta(connection);
 
     release_connection(connection);
 
-    printf("Garbage collecting done\n");
+    printf("[Garbage collection] done\n");
     fflush(stdout);
 
 }
@@ -366,7 +366,7 @@ void db_check_and_mark_ttl_expired_meta(Connection *connection,
     now = time(NULL);
     if(created_time + ttl <= now) {
         db_mark_meta(connection, cid);
-        printf("marked: cid = %*s, ttl = %u, created_time = %ld\n",
+        printf("marked (ttl expired): cid = %*s, ttl = %u, created_time = %ld\n",
                 SHA1_LENGTH, cid, ttl, created_time);
     }
 
@@ -502,18 +502,12 @@ void db_mark_meta_accessed_time_before(Connection *connection, time_t pivot_acce
     char *cid;
 
     // query
-    query = bson_new();
-    /* FIXME: filter isn't working
     // {accessed_time:{$lt:ISODate()}}
-    query = BCON_NEW(
-            "{",
-            "accessed_time"
-            "{",
-            "$lt", BCON_DATE_TIME(pivot_accessed_time * 1000),
-            "}"
-            "}"
-            );
-            */
+    query = BCON_NEW("$query", "{",
+                "accessed_time", "{",
+                    "$lt", BCON_DATE_TIME(pivot_accessed_time * 1000),
+                "}",
+            "}");
 
     cursor = mongoc_collection_find(collection,
             MONGOC_QUERY_NONE, 0, 0, 0, query, NULL, NULL);
@@ -531,7 +525,6 @@ void db_mark_meta_accessed_time_before(Connection *connection, time_t pivot_acce
     // release
     bson_destroy(query);
     mongoc_cursor_destroy(cursor);
-    free(cid);
 
 }
 
