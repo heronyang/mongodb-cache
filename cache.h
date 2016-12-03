@@ -18,4 +18,6 @@ void db_deinit();
 Meta *db_get(const char *cid);
 bool db_post(Meta *meta);
 
+void db_cleanup();
+
 #endif

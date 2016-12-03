@@ -35,6 +35,10 @@ typedef struct _Connection {
 void meta2bson(bson_t *doc, Meta *meta);
 Meta *bson2meta(const bson_t *doc, const char *cid);
 
+void db_scan_and_mark_ttl_expired_meta();
+void db_scan_and_mark_old_meta();
+void db_mark_meta(const char *cid);
+
 /* Database */
 
 void db_init() {
@@ -232,6 +236,55 @@ void meta2bson(bson_t *doc, Meta *meta) {
     BSON_APPEND_INT64(doc, "ttl", meta->ttl);
     BSON_APPEND_TIME_T(doc, "created_time", meta->created_time);
     BSON_APPEND_TIME_T(doc, "accessed_time", meta->accessed_time);
+
+}
+
+void db_cleanup() {
+
+    printf("Garbage collecting starts\n");
+
+    db_scan_and_mark_ttl_expired_meta();
+    db_scan_and_mark_old_meta();
+
+    printf("Garbage collecting done\n");
+    fflush(stdout);
+
+}
+
+void db_scan_and_mark_ttl_expired_meta() {
+    db_mark_meta("83e9ce27e198605616ef247a");
+}
+
+void db_scan_and_mark_old_meta() {
+}
+
+void db_mark_meta(const char *cid) {
+
+    // connect to database
+    Connection *connection = retrive_connection();
+    mongoc_collection_t *collection = connection->collection;
+
+    // variable setup
+    bson_t *query, *update;
+    bson_oid_t oid;
+    bson_error_t error;
+
+    bson_oid_init_from_string (&oid, cid);
+    query = BCON_NEW("_id", BCON_OID(&oid));
+    update = BCON_NEW ("$set", "{",
+            "is_garbage", BCON_BOOL(true),
+            "}");
+
+    // update
+    if (!mongoc_collection_update(collection,
+                MONGOC_UPDATE_NONE, query, update, NULL, &error)) {
+        printf("Error: %s\n", error.message);
+    }
+
+    // release
+    bson_destroy(query);
+    bson_destroy(update);
+    release_connection(connection);
 
 }
 

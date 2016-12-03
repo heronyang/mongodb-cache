@@ -21,17 +21,20 @@ sem_t sem;
 
 /* Garbage collector */
 void *garbage_collection_worker() {
+
     while(true) {
+
         sleep(TIME_PERIOD_GARBAGE_COLLECTION);
-        printf("Garbage collecting starts\n");
-        // TODO: clean up: (1) ttl (2) old accessed meta
-        printf("Garbage collecting done\n");
-        fflush(stdout);
+        db_cleanup();
+
         if(!running) {
             break;
         }
+
     }
+
     return NULL;
+
 }
 
 /* Operation Handlers */
