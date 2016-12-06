@@ -4,13 +4,18 @@
 #include <getopt.h>
 #include <string.h>
 #include <pthread.h>
-#include "meta.h"
-#include "cache.h"
 
-#define CID_LENGTH              25
+#include "helper.h"
+#include "wrapper.h"
+#include "config.h"
+
+#include "proto/meta.pb-c.h"
+#include "proto/operation.pb-c.h"
+
 #define DEFAULT_PUT_AMOUNT      20
 #define DEFAULT_CHUNCK_SIZE     (1024 * 1024)
 #define DEFAULT_THREAD          2
+#define DEFAULT_TTL             600
 
 /* Configuration */
 
@@ -101,19 +106,55 @@ void fill_default_config(Config *config) {
 
 }
 
-Meta *generate_dummy_meta(uint64_t len) {
+uint32_t generate_random_number() {
+    return (uint32_t) rand();
+}
 
-    char *cid = (char *)malloc(CID_LENGTH);
-    char sid[] = "12345";
-    uint8_t *content = malloc(sizeof(uint8_t) * len);
-    uint32_t initial_seq    = 15;
-    time_t ttl              = 0;
+Meta *generate_dummy_meta(uint64_t chunk_size) {
 
-    generate_random_string(cid, CID_LENGTH);
-    generate_random_string((char *)content, (int)len);
+    Buffer *buffer = malloc_w(sizeof(Buffer));
 
-    Meta *meta = create_meta(cid, sid, content, len, initial_seq, ttl);
+    Meta *meta = malloc_w(sizeof(Meta));
+    meta__init(meta);
+
+    // cid
+    meta->cid = malloc(SHA1_LENGTH);
+    generate_random_string(meta->cid, SHA1_LENGTH);
+
+    // sid
+    meta->sid = malloc(SHA1_LENGTH);
+    generate_random_string(meta->sid, SHA1_LENGTH);
+
+    // content
+    ProtobufCBinaryData content; 
+    content.len = chunk_size;
+    content.data = malloc_w(chunk_size);
+    meta->content = content;
+
+    // misc
+    meta->initial_seq = generate_random_number();
+    meta->ttl = DEFAULT_TTL;
+
     return meta;
+
+}
+
+Buffer *generate_post_operation(Meta *meta) {
+
+    Buffer *buffer = malloc_w(sizeof(Buffer));
+
+    // Operation
+    Operation operation = OPERATION__INIT;
+    operation.op = OP_POST;
+    operation.cid = meta->cid;
+    operation.meta = meta;
+
+    // Serialize
+    buffer->len = (size_t) operation__get_packed_size(&operation);
+    buffer->data = malloc_w(buffer->len);
+    operation__pack(&operation, buffer->data);
+
+    return buffer;
 
 }
 
@@ -136,14 +177,18 @@ void generate_random_string(char *s, int len) {
 void put_one_meta(int chunk_size, int tid) {
 
     Meta *meta = generate_dummy_meta((uint64_t)chunk_size);
+    Buffer *buffer = generate_post_operation(meta);
 
-    if(put(meta)) {
-        put_succeed_on_thread[tid] ++;
-    } else {
-        put_failed_on_thread[tid] ++;
-    }
+    // socket
+    int sockfd = connect_to(HOST, PORT);
 
-    free_meta(meta);
+    // send request, don't read response
+    write_socket(sockfd, buffer);
+    put_succeed_on_thread[tid] ++;
+
+    // FIXME: memory leak
+    free(buffer);
+    free(meta);
 
 }
 
@@ -224,16 +269,13 @@ int main(int argc, char *argv[]) {
     srand(time(NULL));
     setbuf(stdout, NULL);
 
-    init();
     clock_t begin_time = clock();
-
     run_on_threads(config->chunk_size,
                    config->put_amount,
                    config->thread_amount);
 
     // end
     clock_t end_time = clock();
-    deinit();
 
     //
     print_time_duration(begin_time, end_time);

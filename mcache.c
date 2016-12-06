@@ -109,6 +109,8 @@ void get_operation() {
     // get len
     size_t len = read_len(sockfd);
     if(len == 0) {
+        // not found
+        printf("meta not found\n");
         free_buffer(buffer);
         return;
     }
@@ -116,6 +118,8 @@ void get_operation() {
     // get content
     uint8_t *content = read_content(sockfd, len);
     if(content == NULL) {
+        // not found
+        printf("Error in reading content\n");
         free_buffer(buffer);
         return;
     }

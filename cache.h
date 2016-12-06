@@ -11,6 +11,7 @@
 
 #include "config.h"
 #include "wrapper.h"
+#include "bcon-wrapper.h"
 
 void db_init();
 void db_deinit();

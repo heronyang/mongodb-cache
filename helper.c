@@ -72,7 +72,6 @@ size_t read_len(int clientfd) {
 
     if(n_read != HEADER_SIZE) {
         printf("n_read = %d\n", n_read);
-        printf("Error in reading header\n");
         return 0;
     }
 
@@ -104,7 +103,7 @@ uint8_t *read_content(int clientfd, size_t len) {
         n_read = recv(clientfd, buffer, left, 0);
 
         if(n_read == -1) {
-            perror("Error in reading content");
+            printf("Error in reading content\n");
             return NULL;
         } else if(n_read == 0) {    // EOF
             break;
@@ -148,6 +147,27 @@ void write_socket(int sockfd, Buffer *buffer) {
  * Free buffer
  */
 void free_buffer(Buffer *buffer) {
-    free(buffer->data);
+    if(buffer == NULL) {
+        return;
+    }
+    if(buffer->data != NULL) {
+        free(buffer->data);
+    }
     free(buffer);
+}
+
+void free_meta(Meta *meta) {
+    if(meta == NULL) {
+        return;
+    }
+    if(meta->cid != NULL) {
+        free(meta->cid);
+    }
+    if(meta->sid != NULL) {
+        free(meta->sid);
+    }
+    if(meta->content.len != 0) {
+        free(meta->content.data);
+    }
+    free(meta);
 }

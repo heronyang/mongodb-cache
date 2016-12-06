@@ -89,6 +89,12 @@ void operation_get_handler(int clientfd, char *cid) {
     // get requested meta
     Meta *meta = db_get(cid);
 
+    // not found
+    if(meta == NULL) {
+        printf("Requested meta not found\n");
+        return;
+    }
+
     // parse response into proper buffer
     Buffer *buffer = malloc_w(sizeof(Buffer));
     buffer->len = (size_t) meta__get_packed_size(meta);
