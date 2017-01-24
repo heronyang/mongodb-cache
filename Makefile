@@ -2,23 +2,20 @@
 
 CC 				= gcc
 
-PB_CFLAGS		= `pkg-config --cflags 'libprotobuf-c >= 1.0.0'`
-PB_LDFLAGS		= `pkg-config --libs 'libprotobuf-c >= 1.0.0'`
-
 MONGOD_CLFLAGS	= `pkg-config --cflags libmongoc-1.0` -LLIBDIR
 MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
 
-CFLAGS 			+= $(PB_CFLAGS) $(MONGOD_CLFLAGS) -Wall -g
-LDFLAGS 		+= $(PB_LDFLAGS) $(MONGOD_LDFLAGS) -pthread
-SOURCES 		= cached.c cache.c wrapper.c bcon-wrapper.c helper.c proto/meta.pb-c.c proto/operation.pb-c.c
-OBJ 			= $(SOURCES:.c=.o)
+CFLAGS 			+= $(MONGOD_CLFLAGS) -Wall -g
+LDFLAGS 		+= $(MONGOD_LDFLAGS) -pthread
+SOURCES 		= cached.cc cache.cc wrapper.cc bcon-wrapper.cc helper.cc proto/meta.pb-c.cc proto/operation.pb-c.cc
+OBJ 			= $(SOURCES:.cc=.o)
 TARGET 			= cached
 
 PROTO_DIR		= "./proto/"
 
-TEST_SOURCES    = proto/*.c wrapper.c helper.c
-TEST_CFLAGS 	= $(PB_CFLAGS) -g
-TEST_LDFLAGS 	= $(PB_LDFLAGS) -pthread
+TEST_SOURCES    = proto/*.cc wrapper.cc helper.cc
+TEST_CFLAGS 	= -g
+TEST_LDFLAGS 	= -pthread
 
 all: proto $(TARGET) cached-test
 
@@ -28,15 +25,15 @@ proto:
 $(TARGET): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
-%.o: %.c
+%.o: %.cc
 	$(CC) $(CFLAGS) -c $< -o $@
 
 cached-test:
-	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) mcache.c -o mcache $(TEST_LDFLAGS)
-	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) mcache-test.c -o mcache-test $(TEST_LDFLAGS)
+	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) mcache.cc -o mcache $(TEST_LDFLAGS)
+	$(CC) $(TEST_CFLAGS) $(TEST_SOURCES) mcache-test.cc -o mcache-test $(TEST_LDFLAGS)
 
 cache-test: proto
-	$(CC) $(CFLAGS) wrapper.c bcon-wrapper.c cache.c cache-test.c proto/*.c helper.c -o cache-test $(LDFLAGS)
+	$(CC) $(CFLAGS) wrapper.cc bcon-wrapper.cc cache.cc cache-test.cc proto/*.cc helper.cc -o cache-test $(LDFLAGS)
 
 clean:
 	$(MAKE) clean -C $(PROTO_DIR)

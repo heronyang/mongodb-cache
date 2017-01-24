@@ -1,7 +1,7 @@
 PROTOS	= meta.proto operation.proto
 
 all:
-	protoc-c --c_out=. $(PROTOS)
+	protoc --cpp_out=. $(PROTOS)
 
 clean:
-	rm -f *.c *.h
+	rm -f *.cc *.h
