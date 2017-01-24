@@ -125,10 +125,8 @@ Meta *generate_dummy_meta(uint64_t chunk_size) {
     generate_random_string(meta->sid, SHA1_LENGTH);
 
     // content
-    ProtobufCBinaryData content; 
-    content.len = chunk_size;
-    content.data = malloc_w(chunk_size);
-    meta->content = content;
+    meta->content.len = chunk_size;
+    meta->content.data = malloc_w(chunk_size);
 
     // misc
     meta->initial_seq = generate_random_number();
@@ -259,7 +257,7 @@ void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
 int main(int argc, char *argv[]) {
 
     // setup configurations
-    Config *config = calloc(sizeof(Config), 0);
+    Config *config = calloc(sizeof(Config), 1);
     fill_default_config(config);
     if(!parseArgv(argc, argv, config)) {
         return 1;
