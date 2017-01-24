@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "helper.h"
 #include "wrapper.h"
@@ -112,8 +113,6 @@ uint32_t generate_random_number() {
 
 Meta *generate_dummy_meta(uint64_t chunk_size) {
 
-    Buffer *buffer = malloc_w(sizeof(Buffer));
-
     Meta *meta = malloc_w(sizeof(Meta));
     meta__init(meta);
 
@@ -186,9 +185,8 @@ void put_one_meta(int chunk_size, int tid) {
     write_socket(sockfd, buffer);
     put_succeed_on_thread[tid] ++;
 
-    // FIXME: memory leak
-    free(buffer);
-    free(meta);
+    free_buffer(buffer);
+    free_meta(meta);
 
 }
 
@@ -222,6 +220,7 @@ void *run_worker(void *worker_args) {
     Worker_Args *wa = worker_args;
     put_n_meta(wa->chunk_size, wa->put_amount_per_thread, wa->tid);
 
+    free(wa);
     return NULL;
 
 }
@@ -253,6 +252,8 @@ void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
         printf("Thread %d: Done\n", i);
     }
 
+    free(tids);
+
 }
 
 int main(int argc, char *argv[]) {
@@ -280,6 +281,11 @@ int main(int argc, char *argv[]) {
     //
     print_time_duration(begin_time, end_time);
     print_succeed_failed_count(config->thread_amount);
+
+    // release
+    free(put_succeed_on_thread);
+    free(put_failed_on_thread);
+    free(config);
 
     return 0;
 

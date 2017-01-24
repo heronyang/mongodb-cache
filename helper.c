@@ -133,13 +133,15 @@ uint8_t *read_content(int clientfd, size_t len) {
 void write_socket(int sockfd, Buffer *buffer) {
 
     // packet
-    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
-    packet = generate_packet(buffer);
+    // uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+    // packet = generate_packet(buffer);
 
+    uint8_t *packet = generate_packet(buffer);
     // write
     int n = write_w(sockfd, packet, HEADER_SIZE + buffer->len);
 
     printf("Write %d bytes succeed\n", n);
+    free(packet);
 
 }
 

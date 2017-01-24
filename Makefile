@@ -8,7 +8,7 @@ PB_LDFLAGS		= `pkg-config --libs 'libprotobuf-c >= 1.0.0'`
 MONGOD_CLFLAGS	= `pkg-config --cflags libmongoc-1.0` -LLIBDIR
 MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
 
-CFLAGS 			+= $(PB_CFLAGS) $(MONGOD_CLFLAGS) -Wall
+CFLAGS 			+= $(PB_CFLAGS) $(MONGOD_CLFLAGS) -Wall -g
 LDFLAGS 		+= $(PB_LDFLAGS) $(MONGOD_LDFLAGS) -pthread
 SOURCES 		= cached.c cache.c wrapper.c bcon-wrapper.c helper.c proto/meta.pb-c.c proto/operation.pb-c.c
 OBJ 			= $(SOURCES:.c=.o)
@@ -17,7 +17,7 @@ TARGET 			= cached
 PROTO_DIR		= "./proto/"
 
 TEST_SOURCES    = proto/*.c wrapper.c helper.c
-TEST_CFLAGS 	= $(PB_CFLAGS)
+TEST_CFLAGS 	= $(PB_CFLAGS) -g
 TEST_LDFLAGS 	= $(PB_LDFLAGS) -pthread
 
 all: proto $(TARGET) cached-test

@@ -52,6 +52,9 @@ Buffer *generate_post_operation_serialized() {
     // Serialize
     buffer->len = (size_t) operation__get_packed_size(&operation);
     buffer->data = malloc_w(buffer->len);
+
+    // Release
+    free(content.data);
     operation__pack(&operation, buffer->data);
 
     printf("Get %zu serialized bytes (post operation)\n", buffer->len);
@@ -67,7 +70,7 @@ Buffer *generate_get_operation_serialized() {
     // Operation
     Operation operation = OPERATION__INIT;
     operation.op = OP_GET;
-    operation.cid = "03e9ce27e198605616ef547aa5aeb411dcac065c";
+    operation.cid = "c3e9ce27e198605616ef547aa5aeb411dcac065c";
 
     // Serialize
     buffer->len = (size_t) operation__get_packed_size(&operation);
@@ -89,9 +92,9 @@ void post_operation() {
 
     // send request, don't read response
     write_socket(sockfd, buffer);
-
     close(sockfd);
-    free(buffer);
+
+    free_buffer(buffer);
 
 }
 
@@ -117,6 +120,8 @@ void get_operation() {
 
     // get content
     uint8_t *content = read_content(sockfd, len);
+    close(sockfd);
+
     if(content == NULL) {
         // not found
         printf("Error in reading content\n");
