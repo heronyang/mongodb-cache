@@ -7,26 +7,26 @@
 
 /* Log & Debug */
 
-void print_meta(Meta *meta) {
+void print_meta(Meta meta) {
 
-    int i;
+    unsigned i;
 
     printf("[Meta]\n");
-    printf("\tcid = %.*s\n", SHA1_LENGTH, meta->cid);
-    printf("\tsid = %.*s\n", SHA1_LENGTH, meta->sid);
-    printf("\tcontent = %.*s (%zu)\n", (int)meta->content.len, meta->content.data, meta->content.len);
+    printf("\tcid = %.*s\n", SHA1_LENGTH, meta.cid().c_str());
+    printf("\tsid = %.*s\n", SHA1_LENGTH, meta.sid().c_str());
+    printf("\tcontent = %.*s (%zu)\n", (int)meta.content().length(), meta.content().c_str(), meta.content().length());
     printf("\t");
-    for(i=0;i<meta->content.len;i++) {
-        printf("[%02x] ", meta->content.data[i]);
+    for(i=0;i<meta.content().length();i++) {
+        printf("[%02x] ", meta.content().at(i));
     }
     printf("\n");
-    printf("\tttl = %u, initial_seq = %u\n", meta->ttl, meta->initial_seq);
+    printf("\tttl = %u, initial_seq = %u\n", meta.ttl(), meta.initial_seq());
 
 }
 
-void print_buffer(int len, uint8_t *buffer) {
+void print_buffer(unsigned len, uint8_t *buffer) {
 
-    int i;
+    unsigned i;
 
     printf("> %d,\t", len);
     for(i=0; i<len; i++) {
@@ -47,7 +47,7 @@ void print_buffer(int len, uint8_t *buffer) {
  */
 uint8_t *generate_packet(Buffer *buffer) {
 
-    uint8_t *packet = malloc_w(HEADER_SIZE + buffer->len);
+    uint8_t *packet = (uint8_t *)malloc_w(HEADER_SIZE + buffer->len);
 
     // header (len)
     packet[0] = (buffer->len >> 24) & 0xff;
@@ -75,13 +75,13 @@ size_t read_len(int clientfd) {
         return 0;
     }
 
-    int len = 0, i;
+    unsigned len = 0, i;
     for(i=0; i<HEADER_SIZE; i++) {
         len += buffer[i];
         if(i != HEADER_SIZE - 1) {
             len <<= 8;
         }
-        printf("%d, %02x, len = %x\n", i, buffer[i], len);
+        printf("%u, %02x, len = %x\n", i, buffer[i], len);
     }
 
     return len;
@@ -94,7 +94,7 @@ uint8_t *read_content(int clientfd, size_t len) {
 
     int n_read, n_read_total = 0;
     uint8_t buffer[BUFFER_SIZE];
-    uint8_t *content = malloc(len);
+    uint8_t *content = (uint8_t *)malloc(len);
     uint8_t *iterator = content;
     size_t left = len;
 
@@ -158,6 +158,7 @@ void free_buffer(Buffer *buffer) {
     free(buffer);
 }
 
+/*
 void free_meta(Meta *meta) {
     if(meta == NULL) {
         return;
@@ -173,3 +174,4 @@ void free_meta(Meta *meta) {
     }
     free(meta);
 }
+*/

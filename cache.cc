@@ -16,8 +16,9 @@
  */
 
 #include "cache.h"
+#include "bcon-wrapper.h"
 
-bool isValidChecksum(Meta *meta);
+bool isValidChecksum(Meta meta);
 
 /* Connection Objects */
 
@@ -68,7 +69,7 @@ void db_deinit() {
 
 Connection *retrive_connection() {
 
-    Connection *connection  = malloc_w(sizeof(Connection));
+    Connection *connection = (Connection *)malloc_w(sizeof(Connection));
 
     mongoc_client_t *client = mongoc_client_pool_pop(pool);
     connection->client      = client;
@@ -161,7 +162,7 @@ void db_update_accessed_time(Connection *connection, const char *cid) {
 
 }
 
-bool db_post(Meta *meta) {
+bool db_post(Meta meta) {
 
     if(!isValidChecksum(meta)) {
         printf("Invalid meta with wrong checksum\n");
@@ -389,7 +390,7 @@ int64_t get_collection_count(Connection *connection) {
 time_t *get_accessed_times(Connection *connection, int64_t count) {
 
     int64_t i = 0;
-    time_t *accessed_times = malloc_w(sizeof(time_t) * count);
+    time_t *accessed_times = (time_t *)malloc_w(sizeof(time_t) * count);
 
     // get collection
     mongoc_collection_t *collection = connection->collection;
@@ -496,7 +497,7 @@ void db_delete_marked_meta(Connection *connection) {
 
 /* Helper */
 
-bool isValidChecksum(Meta *meta) {
+bool isValidChecksum(Meta meta) {
     // TODO
     return true;
 }

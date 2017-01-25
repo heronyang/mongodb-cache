@@ -1,12 +1,12 @@
 .PHONY: proto cached-test cache-test clean
 
-CC 				= gcc
+CC 				= g++
 
 MONGOD_CLFLAGS	= `pkg-config --cflags libmongoc-1.0` -LLIBDIR
 MONGOD_LDFLAGS	= `pkg-config --libs libmongoc-1.0`
 
 CFLAGS 			+= $(MONGOD_CLFLAGS) -Wall -g
-LDFLAGS 		+= $(MONGOD_LDFLAGS) -pthread
+LDFLAGS 		+= $(MONGOD_LDFLAGS) -pthread -lprotobuf
 SOURCES 		= cached.cc cache.cc wrapper.cc bcon-wrapper.cc helper.cc proto/meta.pb-c.cc proto/operation.pb-c.cc
 OBJ 			= $(SOURCES:.cc=.o)
 TARGET 			= cached
