@@ -7,55 +7,54 @@
 #include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/time.h>
 
 #include "wrapper.h"
 #include "config.h"
 #include "helper.h"
 
-#include "proto/meta.pb-c.h"
-#include "proto/operation.pb-c.h"
+#include "proto/meta.pb.h"
+#include "proto/operation.pb.h"
 
 /*
  * Create dummy serialized POST operation structure
  */
 Buffer *generate_post_operation_serialized() {
 
-    Buffer *buffer = malloc_w(sizeof(Buffer));
+    Buffer *buffer = (Buffer *)malloc_w(sizeof(Buffer));
 
     // Meta
-    Meta meta = META__INIT;
-    meta.cid = "c3e9ce27e198605616ef547aa5aeb411dcac065c";
-    meta.sid = "5a9f884a931a2c8f161c24739393f71895d645c1";
+    Meta meta;
+    meta.set_cid("c3e9ce27e198605616ef547aa5aeb411dcac065c");
+    meta.set_sid("5a9f884a931a2c8f161c24739393f71895d645c1");
 
-    ProtobufCBinaryData content; 
-    content.len = 26;
-    content.data = malloc_w(26);
+    meta.set_content((const char *)malloc_w(26));
 
-    int i;
-    for(i=0; i<26;i ++) {
-        content.data[i] = 'A' + i;
-    }
+    meta.set_initial_seq(3456);
+    meta.set_ttl(30);
 
-    meta.content = content;
+    // now
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    long int now_ms = now.tv_sec * 1000 + now.tv_usec / 1000;
 
-    meta.initial_seq = 3456;
-    meta.ttl = 30;
+    meta.set_created_time(now_ms);
+    meta.set_accessed_time(now_ms);
 
-    print_meta(&meta);
+    print_meta(meta);
 
     // Operation
-    Operation operation = OPERATION__INIT;
-    operation.op = OP_POST;
-    operation.cid = meta.cid;
-    operation.meta = &meta;
+    Operation operation;
+    operation.set_op(OP_POST);
+    operation.set_cid(meta.cid());
+    operation.set_allocated_meta(&meta);
 
     // Serialize
-    buffer->len = (size_t) operation__get_packed_size(&operation);
-    buffer->data = malloc_w(buffer->len);
-
-    // Release
-    free(content.data);
-    operation__pack(&operation, buffer->data);
+    buffer->len = operation.ByteSize();
+    std::string data_str;
+    operation.SerializeToString(&data_str);
+    const char *data = data_str.c_str();
+    buffer->data = (uint8_t *)data;
 
     printf("Get %zu serialized bytes (post operation)\n", buffer->len);
 
@@ -65,17 +64,19 @@ Buffer *generate_post_operation_serialized() {
 
 Buffer *generate_get_operation_serialized() {
 
-    Buffer *buffer = malloc_w(sizeof(Buffer));
+    Buffer *buffer = (Buffer *)malloc_w(sizeof(Buffer));
 
     // Operation
-    Operation operation = OPERATION__INIT;
-    operation.op = OP_GET;
-    operation.cid = "c3e9ce27e198605616ef547aa5aeb411dcac065c";
+    Operation operation;
+    operation.set_op(OP_GET);
+    operation.set_cid("c3e9ce27e198605616ef547aa5aeb411dcac065c");
 
     // Serialize
-    buffer->len = (size_t) operation__get_packed_size(&operation);
-    buffer->data = malloc_w(buffer->len);
-    operation__pack(&operation, buffer->data);
+    buffer->len = operation.ByteSize();
+    std::string data_str;
+    operation.SerializeToString(&data_str);
+    const char *data = data_str.c_str();
+    buffer->data = (uint8_t *)data;
 
     printf("Get %zu serialized bytes (get operation)\n", buffer->len);
 
@@ -129,7 +130,9 @@ void get_operation() {
         return;
     }
 
-    Meta *meta = meta__unpack(NULL, len, content);
+    std::string content_str(content, content + len);
+    Meta meta;
+    meta.ParseFromString(content_str);
     print_meta(meta);
 
     // free

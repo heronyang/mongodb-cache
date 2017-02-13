@@ -73,7 +73,7 @@ int accept_w(int s, struct sockaddr *addr, socklen_t *addr_len) {
 /*
  * Connect to server:port, exit if error found
  */
-int connect_to(char *host, int port) {
+int connect_to(const char *host, int port) {
 
     int clientfd;
     struct hostent *server;

@@ -13,14 +13,14 @@
 #include "wrapper.h"
 #include "helper.h"
 
-#include "proto/meta.pb-c.h"
-#include "proto/operation.pb-c.h"
+#include "proto/meta.pb.h"
+#include "proto/operation.pb.h"
 
 static volatile bool running = true;
 sem_t sem;
 
 /* Garbage collector */
-void *garbage_collection_worker() {
+void *garbage_collection_worker(void *) {
 
     while(true) {
 
@@ -39,8 +39,8 @@ void *garbage_collection_worker() {
 
 /* Operation Handlers */
 
-void operation_get_handler(int clientfd, char *cid);
-void operation_post_handler(int clientfd, Meta *meta);
+void operation_get_handler(int clientfd, const char *cid);
+void operation_post_handler(int clientfd, Meta meta);
 
 void operation_handler(int clientfd) {
 
@@ -59,32 +59,28 @@ void operation_handler(int clientfd) {
     }
 
     // unpack operation
-    Operation *operation;
-    operation = operation__unpack(NULL, len, content);
+    std::string content_str(content, content + len);
 
-    if(operation == NULL) {
-        free(content);
-        printf("Error found while unpacking operation\n");
-        return;
-    }
+    Operation operation;
+    operation.ParseFromString(content_str);
 
     // run different operation based on the op field
-    if(operation->op == OP_GET) {
-        operation_get_handler(clientfd, operation->cid);
-    } else if(operation->op == OP_POST) {
+    if(operation.op() == OP_GET) {
+        const char *cid = operation.cid().c_str();
+        operation_get_handler(clientfd, cid);
+    } else if(operation.op() == OP_POST) {
         // FIXME: close clientfd before db_post, faster
-        operation_post_handler(clientfd, operation->meta);
+        operation_post_handler(clientfd, operation.meta());
     } else {
         printf("Error: unseen operation\n");
     }
 
     // free
-    operation__free_unpacked(operation, NULL);
     free(content);
 
 }
 
-void operation_get_handler(int clientfd, char *cid) {
+void operation_get_handler(int clientfd, const char *cid) {
 
     // get requested meta
     Meta *meta = db_get(cid);
@@ -96,10 +92,13 @@ void operation_get_handler(int clientfd, char *cid) {
     }
 
     // parse response into proper buffer
-    Buffer *buffer = malloc_w(sizeof(Buffer));
-    buffer->len = (size_t) meta__get_packed_size(meta);
-    buffer->data = malloc_w(buffer->len);
-    meta__pack(meta, buffer->data);
+    Buffer *buffer = (Buffer *)malloc_w(sizeof(Buffer));
+    buffer->len = meta->ByteSize();
+
+    std::string data_str;
+    meta->SerializeToString(&data_str);
+    const char *data = data_str.c_str();
+    buffer->data = (uint8_t *)data;
 
     // write to the client socket
     write_socket(clientfd, buffer);
@@ -107,7 +106,7 @@ void operation_get_handler(int clientfd, char *cid) {
 
 }
 
-void operation_post_handler(int clientfd, Meta *meta) {
+void operation_post_handler(int clientfd, Meta meta) {
     db_post(meta);
 }
 
@@ -156,6 +155,8 @@ void deinit() {
 
 int main(int argc, char **argv) {
 
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+
     int listenfd, *clientfd_p;
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
@@ -177,7 +178,7 @@ int main(int argc, char **argv) {
 
         // wait for connection
         client_addr_len = sizeof(client_addr);
-        clientfd_p = malloc_w(sizeof(int));
+        clientfd_p = (int *) malloc_w(sizeof(int));
         *clientfd_p = accept_w(listenfd,
                 (SA *) &client_addr,
                 &client_addr_len);

@@ -5,13 +5,14 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "helper.h"
 #include "wrapper.h"
 #include "config.h"
 
-#include "proto/meta.pb-c.h"
-#include "proto/operation.pb-c.h"
+#include "proto/meta.pb.h"
+#include "proto/operation.pb.h"
 
 #define DEFAULT_PUT_AMOUNT      20
 #define DEFAULT_CHUNCK_SIZE     (1024 * 1024)
@@ -111,45 +112,58 @@ uint32_t generate_random_number() {
     return (uint32_t) rand();
 }
 
-Meta *generate_dummy_meta(uint64_t chunk_size) {
+Meta generate_dummy_meta(uint64_t chunk_size) {
 
-    Meta *meta = malloc_w(sizeof(Meta));
-    meta__init(meta);
+    Meta meta;
+
+    // get random id
+    char *random_str = (char *) malloc_w(SHA1_LENGTH);
+    generate_random_string(random_str, SHA1_LENGTH);
 
     // cid
-    meta->cid = malloc(SHA1_LENGTH);
-    generate_random_string(meta->cid, SHA1_LENGTH);
+    meta.set_cid(random_str);
 
     // sid
-    meta->sid = malloc(SHA1_LENGTH);
-    generate_random_string(meta->sid, SHA1_LENGTH);
+    meta.set_sid(random_str);
 
     // content
-    meta->content.len = chunk_size;
-    meta->content.data = malloc_w(chunk_size);
+    meta.set_content((const char *) malloc_w(chunk_size));
 
     // misc
-    meta->initial_seq = generate_random_number();
-    meta->ttl = DEFAULT_TTL;
+    meta.set_initial_seq(generate_random_number());
+    meta.set_ttl(DEFAULT_TTL);
+
+    // created, accessed time
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    long int now_ms = now.tv_sec * 1000 + now.tv_usec / 1000;
+
+    meta.set_created_time(now_ms);
+    meta.set_accessed_time(now_ms);
+
+    // free
+    free(random_str);
 
     return meta;
 
 }
 
-Buffer *generate_post_operation(Meta *meta) {
+Buffer *generate_post_operation(Meta meta) {
 
-    Buffer *buffer = malloc_w(sizeof(Buffer));
+    Buffer *buffer = (Buffer *) malloc_w(sizeof(Buffer));
 
     // Operation
-    Operation operation = OPERATION__INIT;
-    operation.op = OP_POST;
-    operation.cid = meta->cid;
-    operation.meta = meta;
+    Operation operation;
+    operation.set_op(OP_POST);
+    operation.set_cid(meta.cid());
+    operation.set_allocated_meta(&meta);
 
     // Serialize
-    buffer->len = (size_t) operation__get_packed_size(&operation);
-    buffer->data = malloc_w(buffer->len);
-    operation__pack(&operation, buffer->data);
+    buffer->len = operation.ByteSize();
+    std::string data_str;
+    operation.SerializeToString(&data_str);
+    const char *data = data_str.c_str();
+    buffer->data = (uint8_t *)data;
 
     return buffer;
 
@@ -173,7 +187,7 @@ void generate_random_string(char *s, int len) {
 
 void put_one_meta(int chunk_size, int tid) {
 
-    Meta *meta = generate_dummy_meta((uint64_t)chunk_size);
+    Meta meta = generate_dummy_meta((uint64_t)chunk_size);
     Buffer *buffer = generate_post_operation(meta);
 
     // socket
@@ -184,7 +198,6 @@ void put_one_meta(int chunk_size, int tid) {
     put_succeed_on_thread[tid] ++;
 
     free_buffer(buffer);
-    free_meta(meta);
 
 }
 
@@ -215,7 +228,7 @@ void print_succeed_failed_count(int thread_amount) {
 
 void *run_worker(void *worker_args) {
 
-    Worker_Args *wa = worker_args;
+    Worker_Args *wa = (Worker_Args *)worker_args;
     put_n_meta(wa->chunk_size, wa->put_amount_per_thread, wa->tid);
 
     free(wa);
@@ -226,17 +239,17 @@ void *run_worker(void *worker_args) {
 void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
 
     // result allocation for threads
-    put_succeed_on_thread = calloc(thread_amount, sizeof(int));
-    put_failed_on_thread = calloc(thread_amount, sizeof(int));
+    put_succeed_on_thread = (int *) calloc(thread_amount, sizeof(int));
+    put_failed_on_thread = (int *) calloc(thread_amount, sizeof(int));
 
     // thread id pool
-    pthread_t *tids = malloc(thread_amount * sizeof(pthread_t));
+    pthread_t *tids = (pthread_t *) malloc(thread_amount * sizeof(pthread_t));
 
     int i;
     for(i=0; i<thread_amount; i++) {
 
         // work arguments
-        Worker_Args *wa = malloc(sizeof(Worker_Args));
+        Worker_Args *wa = (Worker_Args *) malloc(sizeof(Worker_Args));
         wa->chunk_size = chunk_size;
         wa->put_amount_per_thread = put_amount / thread_amount;
         wa->tid = i;
@@ -257,7 +270,7 @@ void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
 int main(int argc, char *argv[]) {
 
     // setup configurations
-    Config *config = calloc(sizeof(Config), 1);
+    Config *config = (Config *) calloc(sizeof(Config), 1);
     fill_default_config(config);
     if(!parseArgv(argc, argv, config)) {
         return 1;
