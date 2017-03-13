@@ -94,11 +94,10 @@ void operation_get_handler(int clientfd, const char *cid) {
     // parse response into proper buffer
     Buffer *buffer = (Buffer *)malloc_w(sizeof(Buffer));
     buffer->len = meta->ByteSize();
-
     std::string data_str;
     meta->SerializeToString(&data_str);
-    const char *data = data_str.c_str();
-    buffer->data = (uint8_t *)data;
+    buffer->data = (uint8_t *)malloc_w(buffer->len);
+    memcpy(buffer->data, data_str.c_str(), buffer->len);
 
     // write to the client socket
     write_socket(clientfd, buffer);

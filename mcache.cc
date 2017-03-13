@@ -25,8 +25,8 @@ Buffer *generate_post_operation_serialized() {
 
     // Meta
     Meta meta;
-    meta.set_cid("c3e9ce27e198605616ef547aa5aeb411dcac065c");
-    meta.set_sid("5a9f884a931a2c8f161c24739393f71895d645c1");
+    meta.set_cid("c3e9ce27e198605616ef547a");
+    meta.set_sid("5a9f884a931a2c8f161c2473");
 
     meta.set_content((const char *)malloc_w(26));
 
@@ -44,17 +44,18 @@ Buffer *generate_post_operation_serialized() {
     print_meta(meta);
 
     // Operation
-    Operation operation;
-    operation.set_op(OP_POST);
-    operation.set_cid(meta.cid());
-    operation.set_allocated_meta(&meta);
+    Operation *operation = new Operation();
+    operation->set_op(OP_POST);
+    operation->set_cid(meta.cid());
+    operation->set_allocated_meta(&meta);
 
     // Serialize
-    buffer->len = operation.ByteSize();
+    buffer->len = operation->ByteSize();
     std::string data_str;
-    operation.SerializeToString(&data_str);
-    const char *data = data_str.c_str();
-    buffer->data = (uint8_t *)data;
+    operation->SerializeToString(&data_str);
+
+    buffer->data = (uint8_t *)malloc_w(buffer->len);
+    memcpy(buffer->data, data_str.c_str(), buffer->len);
 
     printf("Get %zu serialized bytes (post operation)\n", buffer->len);
 
@@ -67,19 +68,19 @@ Buffer *generate_get_operation_serialized() {
     Buffer *buffer = (Buffer *)malloc_w(sizeof(Buffer));
 
     // Operation
-    Operation operation;
-    operation.set_op(OP_GET);
-    operation.set_cid("c3e9ce27e198605616ef547aa5aeb411dcac065c");
+    Operation *operation = new Operation();
+    operation->set_op(OP_GET);
+    operation->set_cid("c3e9ce27e198605616ef547a");
 
     // Serialize
-    buffer->len = operation.ByteSize();
+    buffer->len = operation->ByteSize();
     std::string data_str;
-    operation.SerializeToString(&data_str);
-    const char *data = data_str.c_str();
-    buffer->data = (uint8_t *)data;
+    operation->SerializeToString(&data_str);
+
+    buffer->data = (uint8_t *)malloc_w(buffer->len);
+    memcpy(buffer->data, data_str.c_str(), buffer->len);
 
     printf("Get %zu serialized bytes (get operation)\n", buffer->len);
-
     return buffer;
 
 }
@@ -144,6 +145,10 @@ int main(int argc, char *argv[]) {
 
     // post operation
     post_operation();
+
+    // post doesn't wait for response, so we freeze a while for the chunk to
+    // be inserted
+    usleep(1000);
 
     // get operation
     get_operation();

@@ -35,6 +35,9 @@ cached-test: proto
 cache-test: proto
 	$(CC) $(CFLAGS) wrapper.cc bcon-wrapper.cc cache.cc cache-test.cc proto/*.cc helper.cc -o cache-test $(LDFLAGS)
 
+test: proto
+	$(CC) $(TEST_CFLAGS) $(CFLAGS) $(TEST_SOURCES) test.cc -o test $(TEST_LDFLAGS) $(LDFLAGS)
+
 clean:
 	$(MAKE) clean -C $(PROTO_DIR)
 	-rm -f $(TARGET) *.o cache-test proto/*.o
