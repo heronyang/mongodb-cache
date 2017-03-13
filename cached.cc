@@ -69,7 +69,6 @@ void operation_handler(int clientfd) {
         const char *cid = operation.cid().c_str();
         operation_get_handler(clientfd, cid);
     } else if(operation.op() == OP_POST) {
-        // FIXME: close clientfd before db_post, faster
         operation_post_handler(clientfd, operation.meta());
     } else {
         printf("Error: unseen operation\n");

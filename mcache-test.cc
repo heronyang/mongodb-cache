@@ -112,58 +112,56 @@ uint32_t generate_random_number() {
     return (uint32_t) rand();
 }
 
-Meta generate_dummy_meta(uint64_t chunk_size) {
+Meta *generate_dummy_meta(uint64_t chunk_size) {
 
-    Meta meta;
+    Meta *meta = new Meta();
 
     // get random id
     char *random_str = (char *) malloc_w(SHA1_LENGTH);
     generate_random_string(random_str, SHA1_LENGTH);
 
     // cid
-    meta.set_cid(random_str);
+    meta->set_cid("123");
 
     // sid
-    meta.set_sid(random_str);
+    meta->set_sid("123");
 
     // content
-    meta.set_content((const char *) malloc_w(chunk_size));
+    meta->set_content((const char *) malloc_w(chunk_size));
 
     // misc
-    meta.set_initial_seq(generate_random_number());
-    meta.set_ttl(DEFAULT_TTL);
+    meta->set_initial_seq(generate_random_number());
+    meta->set_ttl(DEFAULT_TTL);
 
     // created, accessed time
     struct timeval now;
     gettimeofday(&now, NULL);
     long int now_ms = now.tv_sec * 1000 + now.tv_usec / 1000;
 
-    meta.set_created_time(now_ms);
-    meta.set_accessed_time(now_ms);
-
-    // free
-    free(random_str);
+    meta->set_created_time(now_ms);
+    meta->set_accessed_time(now_ms);
 
     return meta;
 
 }
 
-Buffer *generate_post_operation(Meta meta) {
+Buffer *generate_post_operation(Meta *meta) {
 
     Buffer *buffer = (Buffer *) malloc_w(sizeof(Buffer));
 
     // Operation
-    Operation operation;
-    operation.set_op(OP_POST);
-    operation.set_cid(meta.cid());
-    operation.set_allocated_meta(&meta);
+    Operation *operation = new Operation();
+    operation->set_op(OP_POST);
+    operation->set_cid(meta->cid());
+    operation->set_allocated_meta(meta);
 
     // Serialize
-    buffer->len = operation.ByteSize();
+    buffer->len = operation->ByteSize();
     std::string data_str;
-    operation.SerializeToString(&data_str);
-    const char *data = data_str.c_str();
-    buffer->data = (uint8_t *)data;
+    operation->SerializeToString(&data_str);
+
+    buffer->data = (uint8_t *)malloc_w(buffer->len);
+    memcpy(buffer->data, data_str.c_str(), buffer->len);
 
     return buffer;
 
@@ -187,7 +185,7 @@ void generate_random_string(char *s, int len) {
 
 void put_one_meta(int chunk_size, int tid) {
 
-    Meta meta = generate_dummy_meta((uint64_t)chunk_size);
+    Meta *meta = generate_dummy_meta((uint64_t)chunk_size);
     Buffer *buffer = generate_post_operation(meta);
 
     // socket
