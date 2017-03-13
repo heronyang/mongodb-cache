@@ -35,7 +35,7 @@ typedef struct {
 
 /* Function Prototypes */
 
-void generate_random_string(char *s, int len);
+std::string generate_random_string(int len);
 void print_succeed_failed_count();
 void print_time_duration(int begin_time, int end_time);
 void print_config(Config *config);
@@ -116,15 +116,11 @@ Meta *generate_dummy_meta(uint64_t chunk_size) {
 
     Meta *meta = new Meta();
 
-    // get random id
-    char *random_str = (char *) malloc_w(SHA1_LENGTH);
-    generate_random_string(random_str, SHA1_LENGTH);
-
     // cid
-    meta->set_cid("123");
+    meta->set_cid(generate_random_string(SHA1_LENGTH));
 
     // sid
-    meta->set_sid("123");
+    meta->set_sid(generate_random_string(SHA1_LENGTH));
 
     // content
     meta->set_content((const char *) malloc_w(chunk_size));
@@ -167,19 +163,17 @@ Buffer *generate_post_operation(Meta *meta) {
 
 }
 
-void generate_random_string(char *s, int len) {
+std::string generate_random_string(int len) {
 
-    static const char alphanum[] =
-        "0123456789"
+    std::string alphanum = "0123456789"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz";
-
-    int i;
-    for(i = 0; i < len; i++) {
-        s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+    std::string r;
+    for(int i = 0; i < len; i++) {
+        r.push_back(alphanum.at(size_t(rand() % alphanum.length())));
     }
 
-    s[len] = 0;
+    return r;
 
 }
 
@@ -201,6 +195,7 @@ void put_one_meta(int chunk_size, int tid) {
 
 void put_n_meta(int chunk_size, int n, int tid) {
     while(n--) {
+        printf("tid=%d, n=%d\n", tid, n);
         put_one_meta(chunk_size, tid);
     }
 }
@@ -266,6 +261,9 @@ void run_on_threads(int chunk_size, int put_amount, int thread_amount) {
 }
 
 int main(int argc, char *argv[]) {
+
+    // random seed
+    srand(time(NULL));
 
     // setup configurations
     Config *config = (Config *) calloc(sizeof(Config), 1);
